@@ -124,14 +124,14 @@ screen has no separate per-member suspend/ban control.
    request and confirmed-handover steps. They keep the token in their master.
 5. Their master offers compatible capacity, receives and acknowledges one whole
    benchmark, then coordinates their helpers and submits the combined result and
-   proofs. Follow the [member setup guide](MEMBER_SETUP_V2.md). Connecting a custom
+   proofs. Follow the [member setup guide](MEMBER_SETUP.md). Connecting a custom
    master requires no website concurrency choice or editing of pool server code.
 
 For several machines tackling one benchmark, the member uses their own master
 to coordinate compatible helpers and submit one combined result. The displayed
 installer supplies a single-machine reference worker; installing it independently
 on several machines requests separate benchmarks. See the
-[member setup and shared-benchmark diagram](MEMBER_MASTER_V2.md#member-onboarding-and-a-shared-benchmark)
+[member setup and shared-benchmark diagram](MEMBER_MASTER.md#member-onboarding-and-a-shared-benchmark)
 for the expected multi-machine arrangement and the current setup boundary.
 
 Installer availability depends on a configured, tested pool/worker release.
@@ -202,7 +202,7 @@ Reopen **Check transfer** and reconcile the original attempt. Avoid unrelated
 outgoing custody transactions while an attempt is pending because withdrawals
 and fee top-ups share the same nonce sequence. Sponsored-payment recovery
 supports one existing payment pattern; it is not general support for new
-sponsored payments. See [withdrawal behavior](WITHDRAWALS_V2.md).
+sponsored payments. See [withdrawal behavior](WITHDRAWALS.md).
 
 **To refill submission credit, prepare a fee top-up on the pool website.**
 

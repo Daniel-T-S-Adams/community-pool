@@ -9,13 +9,13 @@ coordinates the complete benchmark with the master.
 Shared execution across several machines is the expected member operating model;
 the member-managed master is the entry point for that arrangement.
 
-This uses [member API 2.0](MEMBER_API_V2.md). Ownership is bound to the
+This uses [member API 2.0](MEMBER_API.md). Ownership is bound to the
 authenticated member, without a machine registration or machine ID. The
 reference worker demonstrates the same assignment/result/proof contract and
 supplies an optional SSH helper mode, documented in the worker repository
-(`docs/SSH_MEMBER_MASTER_V2.md`).
+(`docs/SSH_MEMBER_MASTER.md`).
 
-Start with the [member setup guide](MEMBER_SETUP_V2.md) for website registration,
+Start with the [member setup guide](MEMBER_SETUP.md) for website registration,
 the execution token, API connection settings and receiving your first assignment.
 
 ```mermaid
@@ -94,7 +94,7 @@ each can offer `capacity.workers: 12` for one benchmark. This uses one member sl
 and one collateral reservation. If a second benchmark is running, divide the
 available compute between the two rather than promising the same capacity twice.
 
-The pool contract and [member connection guide](MEMBER_SETUP_V2.md) are in place.
+The pool contract and [member connection guide](MEMBER_SETUP.md) are in place.
 The supplied installer is single-machine. Members implement their own
 master/helper connections and scheduling, or configure the reference worker's
 optional SSH mode. They can integrate through the existing API without using

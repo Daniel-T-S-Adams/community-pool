@@ -111,10 +111,10 @@ The [settlement increment](ROUND_SETTLEMENT.md) implements X+2 collateral
 finalization and funded round allocation behind verified protocol adapters.
 
 Withdrawal requests reserve their full amount and freeze the destination;
-execution tokens cannot create them. The [withdrawal increment](WITHDRAWALS_V2.md)
+execution tokens cannot create them. The [withdrawal increment](WITHDRAWALS.md)
 implements operator review, potentially-sent attempts, outgoing verification,
 payment/cancellation and signed destination changes. Continuous chain indexing
-and [member/operator screens](DASHBOARD_V2.md) are implemented. Final
+and [member/operator screens](DASHBOARD.md) are implemented. Final
 reward/expense integrations are not; see [ROADMAP.md](ROADMAP.md). No
 application signer is used.
 

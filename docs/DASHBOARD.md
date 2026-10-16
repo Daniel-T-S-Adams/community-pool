@@ -12,7 +12,7 @@ execution tokens, work requests and confirmed assignment handover, plus result
 and proof submission and troubleshooting. Links are visible before and after
 sign-in. Members configure their own helper machines; website concurrency only
 configures the separately labelled single-machine reference installer. See the
-[member setup guide](MEMBER_SETUP_V2.md).
+[member setup guide](MEMBER_SETUP.md).
 
 ## Member account
 

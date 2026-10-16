@@ -4,7 +4,7 @@ This contract pairs `pool_manager.pool_v2` with the `worker_v2` reference
 client in the separate worker repository and with compatible member-managed
 masters. Members may distribute a benchmark's nonce computation
 across their own compatible machines and return one complete result. They manage
-internal communication and scheduling. See the [master integration contract](MEMBER_MASTER_V2.md).
+internal communication and scheduling. See the [master integration contract](MEMBER_MASTER.md).
 All work routes require
 `Authorization: Bearer <member-token>` and `X-InnoPool-Version: 2.0`. A wrong or
 missing work-protocol version returns 426 before reserving funds. The pool's
@@ -119,7 +119,7 @@ currently supply explicit simulated acceptance, sampling and activation
 evidence; importing an API module starts nothing and submits nothing.
 Both funds and work flags default to false.
 
-The API also serves [member and operator screens](DASHBOARD_V2.md).
+The API also serves [member and operator screens](DASHBOARD.md).
 Its audited operator pause fences new reservations and first precommit sends
 while retaining the existing-work routes above. A separate settlement flag
 defaults to false until live finalization adapters are configured and verified.
