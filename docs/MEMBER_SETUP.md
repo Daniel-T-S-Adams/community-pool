@@ -9,7 +9,7 @@ The **Connect your master** page at `/join` gives the same connection steps.
 The supplied reference installer configures one machine. You can implement a
 custom master using the member API described here, or configure the paired
 reference worker's optional SSH helper mode. See the
-[setup diagram and master contract](MEMBER_MASTER_V2.md).
+[setup diagram and master contract](MEMBER_MASTER.md).
 
 ## 1. Register and prepare your account
 
@@ -156,7 +156,7 @@ responses; the first stored result and proof payloads are immutable. Complete
 the work within TIG's challenge lifetime and retain evidence through collateral
 settlement and pending evidence requests. The reference worker's
 `worker_v2/proofs.py` demonstrates the required tree and proof format. Full
-payload requirements are in [member API 2.0](MEMBER_API_V2.md).
+payload requirements are in [member API 2.0](MEMBER_API.md).
 
 ## If you receive no benchmark
 

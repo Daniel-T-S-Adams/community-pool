@@ -23,7 +23,7 @@ Nonce reconciliation counts verified custody sends, including the separately
 proved custody authorization in a relayer transaction. The relayer's sender,
 nonce and gas bill are not recorded as custody's. Unexplained transfers,
 balances, nonces or delegation still block readiness. See the
-[bounded recovery procedure](WITHDRAWALS_V2.md#already-sent-sponsored-payments).
+[bounded recovery procedure](WITHDRAWALS.md#already-sent-sponsored-payments).
 
 ## Starting and recovering the collector
 

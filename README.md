@@ -53,20 +53,20 @@ For operators:
 [custody observer](docs/CUSTODY_OBSERVER.md),
 [protocol validation](docs/PROTOCOL_VALIDATION.md),
 [submission recovery](docs/SUBMISSION_RECOVERY.md),
-[dashboard](docs/DASHBOARD_V2.md),
+[dashboard](docs/DASHBOARD.md),
 [branding](docs/BRANDING.md).
 
 For members:
-[member setup](docs/MEMBER_SETUP_V2.md),
-[member API](docs/MEMBER_API_V2.md),
-[member master contract](docs/MEMBER_MASTER_V2.md),
+[member setup](docs/MEMBER_SETUP.md),
+[member API](docs/MEMBER_API.md),
+[member master contract](docs/MEMBER_MASTER.md),
 [one bounded worker on a shared machine](docs/LOCAL_CPU_PILOT.md).
 
 Design and money:
 [design](docs/DESIGN.md),
 [observation and selection](docs/OBSERVATION_AND_SELECTION.md),
 [member funds](docs/MEMBER_FUNDS.md),
-[withdrawals](docs/WITHDRAWALS_V2.md),
+[withdrawals](docs/WITHDRAWALS.md),
 [round settlement](docs/ROUND_SETTLEMENT.md),
 [reward receipts](docs/REWARD_RECEIPTS.md).
 

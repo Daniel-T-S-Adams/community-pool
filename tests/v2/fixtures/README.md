@@ -20,7 +20,7 @@ internal member ownership, or authorize payouts.
 It includes the raw transaction, receipt and header for exact fee-model tests.
 The transaction verifier independently confirmed its canonical inclusion and
 finality. No test withdrawal was submitted. See
-[withdrawal implementation notes](../../../docs/WITHDRAWALS_V2.md).
+[withdrawal implementation notes](../../../docs/WITHDRAWALS.md).
 # Custody observation
 
 `custody-block-51572936.json.gz` contains 22 read-only public Base RPC responses

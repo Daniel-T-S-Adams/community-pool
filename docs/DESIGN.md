@@ -91,7 +91,7 @@ for that offer, including member-managed remote capacity. Keep one immutable
 result, one member owner and one slot per unfinished benchmark. The master saves
 the required evidence and supplies authoritative sampled proofs. No pool fleet
 registry or helper transport is required. The official reference worker remains
-a single-machine implementation. See [master integration](MEMBER_MASTER_V2.md).
+a single-machine implementation. See [master integration](MEMBER_MASTER.md).
 
 Implementation defaults proposed for the plan, rather than additional economic rules:
 
@@ -245,7 +245,7 @@ These states also apply when the multiplier is zero. Record the reservation and 
 
 ### Member protocol and reference client
 
-Use the implemented [member API 2.0](MEMBER_API_V2.md):
+Use the implemented [member API 2.0](MEMBER_API.md):
 
 | Endpoint | Purpose |
 |---|---|
@@ -264,7 +264,7 @@ The client first saves the complete assignment locally, then acknowledges its be
 
 Publish the API contract and a single-machine reference runner by adapting useful parts of the original batch worker. It must demonstrate the full benchmark/root/proof lifecycle and recovery after restart. Members can replace it or distribute the work internally. Building a multi-machine scheduler for them is not part of the plan.
 
-Document the [member master contract](MEMBER_MASTER_V2.md), including
+Document the [member master contract](MEMBER_MASTER.md), including
 aggregate compatible capacity, confirmed handover, full nonce aggregation,
 immutable uploads, retained proof evidence and member responsibility for helper
 failures. The pool authenticates the master as the member and applies the shared

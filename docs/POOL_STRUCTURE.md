@@ -65,7 +65,7 @@ flowchart TD
   cores and compatible helper machines while presenting one complete benchmark
   to the pool. Members manage the helper connections shown above. The installed
   reference worker uses local concurrency; it includes no helper transport.
-  See the [member master contract](MEMBER_MASTER_V2.md).
+  See the [member master contract](MEMBER_MASTER.md).
 - **Backup takeover is manual.** The recovery server preserves recovery data
   until needed. Recovery includes switching Cloudflare's origin to the backup
   after stopping the old primary and verifying the restored pool.

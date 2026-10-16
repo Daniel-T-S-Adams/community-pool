@@ -70,7 +70,7 @@ individual rules.
 | Colours, type and layout | `pool_manager/pool_v2/web/style.css` |
 | Wallet sign-in and withdrawal-wallet messages | `pool_manager/pool_v2/auth.py` |
 | API title in the OpenAPI document | `pool_manager/pool_v2/api.py` |
-| Repository and guide titles | `README.md`, `docs/OWNER_GUIDE.md`, `docs/MEMBER_SETUP_V2.md` |
+| Repository and guide titles | `README.md`, `docs/OWNER_GUIDE.md`, `docs/MEMBER_SETUP.md` |
 
 `tests/v2/test_api_origins.py` checks that the served shell and API carry the
 name.

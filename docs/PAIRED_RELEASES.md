@@ -74,7 +74,7 @@ work. A durable drain request lets a running worker finish and exit.
 
 Download the current installer again before updating, since its checksum is
 part of the release. The previous file can still request a drain. See the
-worker repository's installation procedure (`docs/INSTALL_V2.md`) for recovery
+worker repository's installation procedure (`docs/INSTALL.md`) for recovery
 details. The worker's `scripts/start-fresh.sh` invokes only the pinned
 launcher and performs no Git, container or service changes.
 
