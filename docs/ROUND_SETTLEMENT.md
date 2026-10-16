@@ -1,6 +1,6 @@
 # Arbitration evidence and round settlement
 
-The v2 package implements the agreed collateral and reward rules against
+The pool implements the agreed collateral and reward rules against
 PostgreSQL. It does not start a payment process or automatically turn on live
 settlement. Migration `005_settlement.sql` adds append-only reporting
 evidence, reporting-round associations, finalization records and round accounts.
@@ -21,7 +21,7 @@ The [storage cleanup](LEAN_STORAGE.md) fetches final responses for
 open obligations after X+2 and the applicable reporting window close. It keeps
 positive benchmark/reporting-round mappings while available, and saves relevant
 final facts instead of every repeated global response. Pending arbitration and
-failed requests hold final evidence. The following describes the legacy capture
+failed requests hold final evidence. The following describes the full-snapshot capture
 path; financial ownership and credit rules remain the same.
 
 `tools/observe_reports_v2.py` independently polls public reports/arbitrations.
@@ -35,14 +35,14 @@ and collector identity for each independent replica.
 
 ```sh
 python tools/observe_reports_v2.py --collector reports-a \
-  --spool /var/lib/innopool-v2/reports-a --recent-rounds 4
+  --spool /var/lib/community-pool/reports-a --recent-rounds 4
 ```
 
-Supply the dedicated v2 database through `POOL_V2_DATABASE_DSN`. Schema
+Supply the pool database through `POOL_V2_DATABASE_DSN`. Schema
 migration is a separate operation. This public GET-only collector has no TIG
 API key, wallet key, settlement authority or transfer capability. Its finite
 `--once` mode returns nonzero if recording remains pending or evidence is
-incomplete. It requires the ordinary v2 block observer to archive its block
+incomplete. It requires the ordinary block observer to archive its block
 anchors; missing blocks keep report evidence in the local spool.
 
 Optional `--player-id` and repeated `--challenge-id` arguments also capture

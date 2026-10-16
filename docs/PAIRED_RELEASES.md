@@ -4,8 +4,8 @@ The API publishes a paired release and its checked worker installer. The
 served pair names the tested pool and worker commits, pins the official
 challenge runtime images by digest and offers only the resources listed in
 the service configuration's `offered_resources` (CPU by default; GPU once
-validated). A CPU pair has been validated on a private testnet, and a
-two-server CPU benchmark has activated on TIG through a mainnet pair.
+validated). CPU benchmarks have activated on TIG mainnet through a served
+pair, on one machine and on a master with one helper.
 See the [deployment procedure](MAINNET_DEPLOYMENT.md); the checks that remain
 open, including the reward cycle, are listed in [ROADMAP.md](ROADMAP.md).
 
@@ -75,9 +75,8 @@ work. A durable drain request lets a running worker finish and exit.
 Download the current installer again before updating, since its checksum is
 part of the release. The previous file can still request a drain. See the
 worker repository's installation procedure (`docs/INSTALL_V2.md`) for recovery
-details. The worker's former startup script invokes only the pinned v2
-launcher; its previous Git-reset, Compose and service-installation behavior is
-retired.
+details. The worker's `scripts/start-fresh.sh` invokes only the pinned
+launcher and performs no Git, container or service changes.
 
 ## Validation and remaining rollout
 

@@ -1,4 +1,4 @@
-"""Resolve only proven legacy/compact list permutations, retaining every alert."""
+"""Resolve only proven full-snapshot/compact list permutations, retaining every alert."""
 
 from copy import deepcopy
 import hashlib
@@ -26,13 +26,13 @@ def ordering_proof(legacy, compact, source_digest):
     records are inferred, and no values or list multiplicities may change.
     """
     if legacy.get('format') or compact.get('format') != FORMAT or compact.get('source_identity_version', 1) != 1:
-        raise ProtocolDataError('ordering resolution requires legacy and v1 compact captures')
+        raise ProtocolDataError('ordering resolution requires a full-snapshot and a v1 compact capture')
     original = validate_snapshot(legacy)
     other = validate_snapshot(compact)
     if (original.block_id, original.height) != (other.block_id, other.height):
         raise ProtocolDataError('ordering resolution captures have different block identities')
     if _semantic(original, legacy) != source_digest:
-        raise ProtocolDataError('legacy replay does not match the immutable block digest')
+        raise ProtocolDataError('full-snapshot replay does not match the immutable block digest')
     restored = deepcopy(legacy)
     changed = []
     for path in PATHS:
@@ -53,7 +53,7 @@ def ordering_proof(legacy, compact, source_digest):
     replay_digest = _semantic(replay, restored)
     candidate = compact_observation(restored, identity_version=1)
     expected = deepcopy(compact)
-    # Legacy packing discarded the transport order of pool feed records.
+    # Full-snapshot packing discarded the transport order of pool feed records.
     # Reproduce the canonical source exactly; extra raw-order aliases in the
     # captured metadata need not be regenerated to prove accounting equality.
     aliases = candidate.pop('source_semantic_digests')

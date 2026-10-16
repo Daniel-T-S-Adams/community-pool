@@ -179,7 +179,7 @@ This rehearsal has been performed against a real primary backup, replaying its
 post-backup transaction successfully. The full evidence audit has also verified
 every chunk digest and manifest reference of a raw evidence copy on the
 recovery server. Separately, a migration has been applied and replayed against
-a restored **funded testnet pilot** with member balances, both collateral
+a restored **funded pilot database** with member balances, both collateral
 holds, pending withdrawals and journal history unchanged. These are distinct
 tests; none of them is a funded mainnet takeover or a token transfer.
 
@@ -205,7 +205,7 @@ Before enabling live work, the operator performs these checks:
 - Record the operator-approved mainnet budgets for protocol-fee top-ups and
   pool-wallet transaction fees, and monitor them.
 - Confirm custody catch-up and RPC freshness; ordinary availability/freshness
-  checks remain. Consume or disable any scoped paid trial approvals.
+  checks remain. Consume or disable any scoped pilot approvals.
 
 The backup mechanisms follow the PostgreSQL 18 documentation for
 [base backups](https://www.postgresql.org/docs/18/app-pgbasebackup.html),

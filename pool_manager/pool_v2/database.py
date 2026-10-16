@@ -1,7 +1,7 @@
 """Explicit, isolated PostgreSQL connections and checksummed migrations.
 
-Importing this module starts nothing and never uses legacy database settings.
-Callers provide a v2 DSN; production must use a separate database and role.
+Importing this module starts nothing and reads no environment.
+Callers provide the DSN; production must use a dedicated database and role.
 """
 
 from contextlib import contextmanager
@@ -17,7 +17,7 @@ register_uuid()
 class Database:
     def __init__(self, dsn):
         if not dsn:
-            raise ValueError("an explicit v2 database DSN is required")
+            raise ValueError("an explicit database DSN is required")
         self.dsn = dsn
 
     @contextmanager

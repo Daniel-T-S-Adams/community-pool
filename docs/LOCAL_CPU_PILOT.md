@@ -1,8 +1,10 @@
-# Local CPU validation scope
+# Bounded CPU pilot on a shared host
 
-This scope covers CPU-only testing on one shared host. Both member identities
-use separate worker installations on that machine, one at a time. GPU
-execution and validation with separate machines are deferred to a later test.
+The optional pilot policy limits a fresh pool to CPU work for two member
+accounts on TIG testnet under an immutable spending ceiling. It is the setup
+for exercising a new deployment on one shared host before real members and
+money arrive: each account uses its own worker installation on that machine,
+one at a time. GPU execution and separate machines are outside this scope.
 
 The worker supplies a local pilot launcher and systemd slice. Follow the worker
 repository's pilot procedure (`docs/LOCAL_CPU_PILOT.md`) for the worker
@@ -32,7 +34,7 @@ otherwise continue requesting benchmarks. Hitting a resource limit can fail an
 acknowledged assignment and forfeit its collateral under the agreed rules; do
 not silently raise the host resource ceiling to avoid that failure.
 
-## Initial testnet budget and attempt limits
+## Testnet budget and attempt limits
 
 The pilot uses TIG testnet and Base Sepolia, with **5 TIG maximum total** for
 member funding/collateral and submission charges. The account's free 10 TIG fee

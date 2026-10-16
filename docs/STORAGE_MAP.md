@@ -165,7 +165,8 @@ here as a fixed capacity requirement.
 ## Verification and holds
 
 A same-height ordering conflict is resolved by an immutable, fully replayed
-resolution; see [legacy ordering conflicts](LEAN_STORAGE.md#legacy-ordering-conflicts).
+resolution; see
+[ordering conflicts at the rollout boundary](LEAN_STORAGE.md#ordering-conflicts-at-the-compact-rollout-boundary).
 A backup cannot recreate a block that was never captured: a missing height
 stays visible and is handled under the
 [bounded missing-block tolerance](ROUND_SETTLEMENT.md#bounded-missing-block-tolerance),

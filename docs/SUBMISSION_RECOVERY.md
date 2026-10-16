@@ -1,6 +1,6 @@
 # TIG submission and recovery service
 
-The v2 coordinator links the member queue to TIG using durable submission
+The coordinator links the member queue to TIG using durable submission
 intents. It runs independently of the API and block collector. The coordinator
 can reconcile existing submissions while new work is paused.
 [ROADMAP.md](ROADMAP.md) lists which submission paths have been validated
@@ -97,7 +97,7 @@ reclassifies an external write as unsent.
 ## Development entry points
 
 The database must first be migrated using the separate migration privilege.
-Provide `POOL_V2_DATABASE_DSN` only for the isolated v2 database. The coordinator
+Provide `POOL_V2_DATABASE_DSN` for the pool database only. The coordinator
 entry point is:
 
 ```sh
@@ -114,7 +114,7 @@ performs one cycle for development checks; it does not change the flags.
 
 The observer is `tools/observe_tig_v2.py`, with
 `--pool-player-id <configured-address>`. It needs no TIG API key. Neither entry
-point changes legacy deployments or performs startup migrations.
+point performs startup migrations.
 
 The writer supports only `/submit-precommit`, `/submit-benchmark` and
 `/submit-proof`. Authenticated writes never follow redirects. Public artifact

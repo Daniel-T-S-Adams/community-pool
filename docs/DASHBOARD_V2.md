@@ -1,7 +1,6 @@
 # Member and operator screens
 
-The v2 API serves its own static website at `/`, `/join` and `/operator`.
-It does not load the inherited dashboard, scheduler or payout processes.
+The API serves its own static website at `/`, `/join` and `/operator`.
 Deploy it behind HTTPS at the exact origin configured for wallet signatures.
 Assets are local; no third-party scripts or analytics are required.
 The screens carry the Community Pool identity; the name, mark, colours and

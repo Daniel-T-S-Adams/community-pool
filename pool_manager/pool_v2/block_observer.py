@@ -167,7 +167,7 @@ def manifest_references(cursor, manifest):
 
 
 def _unpack(cursor, manifest):
-    """Replay a manifest; both paged and legacy inline record lists are supported."""
+    """Replay a manifest; both paged and inline record lists are supported."""
     if "expired" in manifest:
         raise ProtocolDataError("block evidence expired under the retention policy on " + str(manifest["expired"].get("at")))
     if "compact_ref" in manifest:

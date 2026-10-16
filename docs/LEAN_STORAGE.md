@@ -8,6 +8,10 @@ boundary, described at the end of this document. Where the data lives and how
 it reaches the recovery host is explained in the [storage map](STORAGE_MAP.md);
 live measurements belong to each deployment.
 
+Three capture formats exist. The original full-snapshot format has no `format`
+field; the code and migrations call it `legacy`. The compact full-network
+projection is `pool-network-v1`, and the pool-scoped capture is `pool-scoped-v2`.
+
 ## Binary downloads
 
 Before a paid precommit, the coordinator downloads and checks the selected
@@ -26,9 +30,9 @@ host, verify the hash and safely extract the required library/PTX. Public GET
 redirects are restricted to allowed HTTPS sources and do not forward credentials.
 Pool API requests still refuse redirects.
 
-Legacy archive rows and the old artifact endpoint remain for previously prepared
-reservations and issued assignments. Update the paired worker before activating
-direct assignments.
+Archive rows and the artifact endpoint remain for reservations prepared and
+assignments issued before direct downloads. Update the paired worker before
+activating direct assignments.
 An existing explicit `binary_hosts` override must include
 `media.githubusercontent.com` as well as the configured TIG API host.
 
@@ -55,8 +59,8 @@ reproduce the exact fractional credit; member credit needs nothing else.
 Ownership, per-block credit, coverage and financial records remain permanent.
 Pool-scoped and compact captures are one compressed, checksummed blob and use
 the existing bounded retention floors. Open selection anchors remain until
-collateral is finalized. The separate capture/DB-recorder threads and legacy
-readers remain.
+collateral is finalized. The separate capture/DB-recorder threads and the
+full-snapshot readers remain.
 
 `--full-network` restores the previous behaviour: every active player's feed
 is read, the whole network is validated, and the compact `pool-network-v1`
@@ -65,7 +69,7 @@ totals, algorithm and challenge config, one best network reference per
 algorithm/track with its parameters, and source identity digests. The guarded
 conversion of historical full captures to that format remains.
 
-Deploy every collector with this change at once: a legacy full capture and a
+Deploy every collector with this change at once: a full-snapshot capture and a
 pool-scoped capture of the same block carry different block identities and
 would be reported as a conflicting observation at that height. A restarted
 collector resumes after the newest recorded block instead of capturing the
@@ -130,7 +134,7 @@ compact format; rollback must retain a reader that understands it.
 
 `tools/compact_evidence_v2.py` uses the admin DSN for bounded maintenance:
 
-1. Run with `--player-id` and `--limit` to add compact replacements for legacy
+1. Run with `--player-id` and `--limit` to add compact replacements for full
    snapshots. Original immutable block identities stay unchanged. Held blocks
    retain raw evidence. Review held reasons; `--after-height` continues past a
    reviewed batch without declaring held blocks converted.
@@ -149,9 +153,9 @@ compact format; rollback must retain a reader that understands it.
 
 File maintenance pins in-progress writes and briefly locks deletion batches,
 without holding capture behind the full directory scan. DB chunk cleanup uses
-the observation writer lock and defers with more than 100 legacy captures.
-Corrupt writing pins or digest pages stop cleanup; the temporary cleanup marker
-is cleared even on failure.
+the observation writer lock and defers with more than 100 unconverted
+full-snapshot captures. Corrupt writing pins or digest pages stop cleanup;
+the temporary cleanup marker is cleared even on failure.
 Missing heights remain visible and continue to hold exact settlement.
 
 WAL, bases and configuration transfers keep their current transport and
@@ -162,9 +166,9 @@ backup retirement retains three verified bases and their required WAL; older
 retained bases may use the recovery server's existing disks (see the
 [storage map](STORAGE_MAP.md#paths)).
 
-## Legacy ordering conflicts
+## Ordering conflicts at the compact rollout boundary
 
-Source identity version 2 compares record lists in the header using the legacy
+Source identity version 2 compares record lists in the header using the original
 canonical encoding while retaining the original header in the compact payload.
 Existing full and v1 compact source hashes remain readable; algorithm binary
 metadata ordering does not change bundle credit or selection references.

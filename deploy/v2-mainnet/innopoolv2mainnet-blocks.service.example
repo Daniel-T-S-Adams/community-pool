@@ -1,5 +1,5 @@
 [Unit]
-Description=InnoPool v2 mainnet blocks
+Description=Community Pool mainnet blocks
 After=network-online.target
 Wants=network-online.target
 

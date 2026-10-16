@@ -1,9 +1,9 @@
 # Evidence retention
 
 The storage cleanup adds compact pool captures, direct binary downloads, final
-report fetching and guarded legacy conversion.
+report fetching and guarded conversion of full-snapshot captures.
 [Lean storage](LEAN_STORAGE.md) specifies migrations 020 to 022, 024 and 025 and the cleanup
-sequence. The policy below applies to retained legacy and new compact captures.
+sequence. The policy below applies to retained full-snapshot and compact captures.
 Guarded conversion of historical full-network captures is described in
 [existing archive cleanup](LEAN_STORAGE.md#existing-archive-cleanup).
 The pool-scoped capture adds whole-network selection references under

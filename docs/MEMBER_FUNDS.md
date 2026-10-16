@@ -1,6 +1,6 @@
 # Member funds foundation
 
-These services implement v2 funds accounting for the API. The foundation
+These services implement the funds accounting for the API. The foundation
 tests use isolated generated evidence; the custody, submission and withdrawal
 integrations are linked below. The API holds no signing key and does not send
 tokens. [ROADMAP.md](ROADMAP.md) lists what is not implemented or not yet
@@ -8,10 +8,10 @@ validated.
 
 ## Storage and accounting
 
-Use a **separate PostgreSQL database and credentials** for v2. Pass its DSN
+Use a **dedicated PostgreSQL database and credentials** for the pool. Pass its DSN
 explicitly to `pool_manager.pool_v2.database.Database`; call `migrate()` during
-controlled deployment, then `benchmarks.initialize_accounts()`. No legacy
-environment variable, connection, table, scheduler, or retention task is used.
+controlled deployment, then `benchmarks.initialize_accounts()`. Importing the
+package reads no environment variable and starts no connection or task.
 Ordered migrations carry checksums and refuse changed or unknown versions.
 
 All token values are integer units (18 decimals for TIG). The append-only
@@ -89,7 +89,7 @@ occupies a slot. Request retries recover the same reservation; changed inputs
 under the same key conflict. Operator multiplier changes take the same member
 lock. Existing holds cannot be repriced.
 
-Before the v2 submission worker makes a network write, it commits
+Before the submission coordinator makes a network write, it commits
 `mark_submitting()`. Uncertain submissions cannot be sent twice or cancelled as
 unsent. Definitive rejection returns the member hold and unused operator fee
 capacity; actual costs debit only the protocol operator budget. The live
@@ -123,10 +123,10 @@ application signer is used.
 Install into an isolated environment:
 
 ```sh
-python3 -m venv /tmp/innopool-v2-test-env
-/tmp/innopool-v2-test-env/bin/pip install -r tests/v2/requirements.txt
-POOL_V2_TEST_DSN='host=127.0.0.1 port=5432 user=postgres dbname=innopool_v2_test' \
-  /tmp/innopool-v2-test-env/bin/python -m unittest discover -s tests/v2 -v
+python3 -m venv .venv
+.venv/bin/pip install -r tests/v2/requirements.txt
+POOL_V2_TEST_DSN='host=127.0.0.1 port=5432 user=postgres dbname=community_pool_test' \
+  .venv/bin/python -m unittest discover -s tests/v2 -v
 ```
 
 Use a disposable database whose name ends in `_test`. The tests **drop and

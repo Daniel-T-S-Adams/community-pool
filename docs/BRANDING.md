@@ -1,9 +1,8 @@
 # Community Pool branding
 
 Community Pool is the name of the member-run pool for The Innovation Game (TIG)
-served by this repository. It replaces the earlier "InnoPool v2" name on the
-website, in wallet sign-in messages and in the API title. The identity is
-deliberately simple: one accent colour, system typography and a small mark.
+served by this repository. The identity is deliberately simple: one accent
+colour, system typography and a small mark.
 
 ## Name
 
@@ -11,12 +10,13 @@ deliberately simple: one accent colour, system typography and a small mark.
   "CommunityPool", "community pool" or "CP" in member-facing text.
 - Say "the pool" after the first mention. Add "TIG" only where the context is
   not already clear, such as a page description.
-- Member-facing text does not call the pool "v2" or "InnoPool". Protocol and
-  deployment identifiers keep their existing names because deployed workers,
-  services and backups depend on them: the `X-InnoPool-Version` header, the
-  `innopool-v2-*` service, directory and container names, the
-  `innopool-slave-v2` repository and the database names. The member API is
-  still version `2.0`; that is a protocol number, not a product name.
+- Member-facing text calls the pool Community Pool and nothing else. Some
+  protocol and deployment identifiers still carry older names because deployed
+  workers, services and backups depend on them: the `X-InnoPool-Version`
+  header, the `innopool-v2-*` service, directory and container names and the
+  database names. [ROADMAP.md](ROADMAP.md#identifiers-kept-for-compatibility)
+  lists them. The member API is version `2.0`; that is a protocol number, not
+  a product name.
 
 ## Mark
 

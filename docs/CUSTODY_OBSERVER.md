@@ -41,13 +41,13 @@ This exception is only for initialization before the pool accepts live funds or
 work; it cannot be used to reconcile unexplained activity after launch.
 
 ```sh
-# Use the isolated v2 environment and database, after explicit migration.
-export POOL_V2_DATABASE_DSN='<v2 runtime database connection>'
+# Use the pool's own environment and database, after explicit migration.
+export POOL_V2_DATABASE_DSN='<runtime database connection>'
 export POOL_V2_CUSTODY_RPC_URL='<verified read-only RPC endpoint>'
 python3 tools/observe_custody_v2.py \
   --chain-id 8453 --token '<verified TIG token>' --custody '<new custody wallet>' \
   --confirmations 12 --start-height '<first funding block or earlier>' \
-  --spool '<persistent v2 custody archive directory>'
+  --spool '<persistent custody archive directory>'
 ```
 
 For an approved pre-launch baseline, also pass `--baseline-actor` and
