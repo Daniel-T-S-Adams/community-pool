@@ -18,13 +18,13 @@ jobs:
       postgres:
         image: postgres:18.4-trixie
         env:
-          POSTGRES_DB: innopool_v2_test
+          POSTGRES_DB: community_pool_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: isolated-ci-only
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d innopool_v2_test"
+          --health-cmd "pg_isready -U postgres -d community_pool_test"
           --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -48,7 +48,7 @@ jobs:
       - name: Test protocol replay, funds concurrency and the paired worker API
         env:
           PYTHONDONTWRITEBYTECODE: "1"
-          POOL_V2_TEST_DSN: "host=127.0.0.1 port=5432 user=postgres password=isolated-ci-only dbname=innopool_v2_test"
+          POOL_V2_TEST_DSN: "host=127.0.0.1 port=5432 user=postgres password=isolated-ci-only dbname=community_pool_test"
           POOL_V2_WORKER_CHECKOUT: "${{ github.workspace }}/.paired-worker"
           POOL_V2_BROWSER_TESTS: "1"
         run: python3 -m unittest discover -s tests/v2 -v
