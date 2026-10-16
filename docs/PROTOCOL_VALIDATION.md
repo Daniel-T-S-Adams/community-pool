@@ -1,13 +1,13 @@
-# Stage 0 protocol validation
+# Protocol probe
 
-Live block capture, qualifying-credit inputs, and public report parsing are
-implemented and tested. This probe does not submit benchmarks, change a reward
-destination, authenticate a member, or make any ledger or token movement.
-A narrow explicit late-result rejection rule exists in the coordinator (see
-[submission recovery](SUBMISSION_RECOVERY.md)); disappearance alone is
-insufficient evidence of expiry. The recorded probes below are integration
-inputs, not health checks of a running deployment. [ROADMAP.md](ROADMAP.md)
-lists the checks that have not been validated live.
+`tools/probe_tig_v2.py` captures complete TIG protocol inputs for a few
+consecutive blocks and checks the qualifying-credit arithmetic and public
+report parsing against them. It does not submit benchmarks, change a reward
+destination, authenticate a member, or make any ledger or token movement, and
+its output is integration input, not a health check of a running deployment.
+The production observer, with persistent coverage cursors, database storage,
+backup, redundancy and retention, is described in
+[observation and selection](OBSERVATION_AND_SELECTION.md).
 
 ## Run and replay
 
@@ -42,40 +42,28 @@ incomplete. A missed height or inconsistent parent link prevents the run from
 claiming consecutive coverage, even when both individual snapshots validate.
 Source data is never filled with zeros or copied forward from an older block.
 
-These are finite integration probes, not the production observer. Persistent
-coverage cursors, database storage, backup/restore, redundancy, retention, and
-efficient storage of recurring benchmark data belong to Stage 2.
+## Recorded fixtures
 
-## Recorded live evidence
+[`tests/v2/fixtures`](../tests/v2/fixtures) holds two consecutive mainnet
+blocks captured this way, with their response provenance, and the public
+report and arbitration responses for two rounds. `test_protocol.py` replays
+them: the validator reconstructs exact fractional bundle credit using the
+equal-sharing rule within each player/algorithm/track group, where higher
+scores receive credit first and bundles tied at the boundary share the
+remaining places equally. No attempt is made to recover TIG's randomly
+selected winning bundle identities, and the active-score array index is only
+a local credit identifier, not an original nonce or bundle index for fraud
+evidence. The report parser joins reports and decisions by report ID and keeps
+pending decisions, final `inconclusive`, final `reproducible` and upheld
+`nonreproducible` distinct; unknown results or missing fields are errors. The
+parser does not itself decide that an arbitration period has ended or release
+or forfeit collateral.
 
-The public responses were captured from
-[TIG's mainnet API](https://mainnet-api.tig.foundation/get-block?include_data=true).
-The complete compressed recordings and response provenance are in
-[`tests/v2/fixtures`](../tests/v2/fixtures).
-
-| Block | Active benchmarks fully covered | Eligible bundles | Reconciled qualifying credit |
-|---|---:|---:|---:|
-| 1,351,111 | 2,464 | 394,477 | 4,000 |
-| 1,351,112 | 2,475 | 401,453 | 4,000 |
-
-The second block references the first as its parent. Both are in round 135.
-The validator reconstructs exact fractional bundle credit using the approved
-equal-sharing rule within each player/algorithm/track group. Higher scores
-receive credit first; bundles tied at the boundary share the remaining places
-equally. No attempt is made to recover TIG's randomly selected winning bundle
-identities. The active-score array index is only a local credit identifier,
-not an original nonce or bundle index for fraud evidence.
-
-This demonstrates complete protocol inputs and arithmetic. Assigning credit
-to pool members still requires the new pool's immutable ownership records.
-These recordings cannot substitute for observations of future reward rounds.
-
-Round 129 returned 16 reports and 16 confirmed `nonreproducible` arbitrations;
-round 130 returned 46 of each. Reports and decisions are joined by report ID.
-Pending decisions, final `inconclusive`, final `reproducible`, and upheld
-`nonreproducible` remain distinct. Unknown results or missing response fields
-are errors. This parser does not itself decide that an arbitration period has
-ended or release/forfeit collateral.
+These fixtures establish complete protocol inputs and arithmetic. Assigning
+credit to pool members still requires the pool's immutable ownership records,
+and recordings cannot substitute for observations of future reward rounds.
+What the fixtures and the live deployment have and have not established is
+summarised in [ROADMAP.md](ROADMAP.md#validated-so-far-and-not-yet).
 
 ## Network metadata discrepancy
 
@@ -89,32 +77,24 @@ token's `decimals()` returned 18. Its requests and responses are preserved in
 [official chain ID documentation](https://docs.base.org/base-chain/api-reference/ethereum-json-rpc-api/eth_chainId)
 also identifies 8453 as Base Mainnet.
 
-The funds adapter must use explicit deployment configuration, verify it
-against the RPC and token contract, and surface disagreement with TIG's
-advertised metadata. Do not copy that advertised chain ID into wallet-signing
-messages, deposit attribution, or withdrawal checks. This probe changes no
-deployment network configuration or wallet.
+The funds adapter therefore uses explicit deployment configuration, verifies it
+against the RPC and token contract, and surfaces disagreement with TIG's
+advertised metadata. The advertised chain ID is never copied into
+wallet-signing messages, deposit attribution, or withdrawal checks. The custody
+observer likewise reproduces a complete public token transfer and its wallet
+balance change from archived RPC responses; see
+[custody observation](CUSTODY_OBSERVER.md).
 
-The custody observer also reproduces a complete public token transfer and
-its wallet balance change from archived RPC responses. See the
-[custody observation evidence](CUSTODY_OBSERVER.md). This validates the read-only
-adapter against real Base responses; it does not select or fund a deployment
-wallet.
+## What the probe does not establish
 
-## Remaining Stage 0 work
-
-The probe establishes complete protocol inputs and arithmetic for recorded
-blocks; it proves nothing about a particular deployment. A record disappearing
-from a current feed is not proof of expiry (the confirmed verification-failure
-feed has a recorded public fixture and adapter tests; see
-[submission recovery](SUBMISSION_RECOVERY.md)), an elapsed date or an
-unsuccessful reports fetch is not a final-outcome signal, and both the
+A record disappearing from a current feed is not proof of expiry; the
+confirmed verification-failure feed has a recorded public fixture and adapter
+tests, see [submission recovery](SUBMISSION_RECOVERY.md). An elapsed date or
+an unsuccessful reports fetch is not a final-outcome signal, and both the
 creation and the reporting round identifiers are preserved. Every deployment
 must configure and verify its own pool account, custody wallet, token network
 and confirmation policy before enabling monetary operations. Precommit
 acceptance and rejection against a deployment, definitive expiry, the
 creation/reporting-round boundary mapping and the path from final round
-emissions to actual pool receipts (claim, protocol penalties and operator-paid
-cost reimbursement) are the checks listed in [ROADMAP.md](ROADMAP.md). There
-is no new business-policy question in them; they are technical integration
-and deployment requirements.
+emissions to actual pool receipts are the checks listed in
+[ROADMAP.md](ROADMAP.md).

@@ -144,6 +144,6 @@ the matching paired release.
 CI pins an exact worker commit for direct-download and member-master
 regression checks; the served pool/worker pair is the one named in the
 [paired release manifest](PAIRED_RELEASES.md). Simulated pairing tests do not
-prove timely CPU/GPU execution. A master/helper benchmark has activated on TIG;
-the checks that remain open, including the reward cycle, are listed in
+prove timely CPU/GPU execution. What has been exercised on mainnet and the
+checks that remain open, including the reward cycle, are listed in
 [ROADMAP.md](ROADMAP.md).
