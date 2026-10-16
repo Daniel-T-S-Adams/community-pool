@@ -172,7 +172,6 @@ payload requirements are in [member API 2.0](MEMBER_API.md).
 
 Whether new work is paused is reported by the capabilities route; the pool's
 known limitations are listed in [ROADMAP.md](ROADMAP.md). The API contract
-supports a member-managed master, and a real two-server rehearsal passed
-computation, restart recovery and combined uploads. This guide covers your
-connection to the pool; configuring helper machines and their communication
+supports a member-managed master. This guide covers your connection to the
+pool; configuring helper machines and their communication
 remains your responsibility.
