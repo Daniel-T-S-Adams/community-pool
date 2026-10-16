@@ -1,0 +1,30 @@
+-- Run as the pool_v2 schema owner after applying migrations.
+-- Public funding collection must bind its immutable player ID. Runtime block
+-- status and round-coverage reads also need to see the operator's gap waiver.
+GRANT INSERT ON TABLE pool_v2.protocol_identity TO innopool_runtime;
+GRANT INSERT ON TABLE pool_v2.custody_opening_baselines TO innopool_runtime;
+GRANT SELECT ON TABLE pool_v2.observation_gap_waivers TO innopool_runtime;
+-- Migration 018: the block observer maintains the chunk index; status and
+-- health reads may inspect the retention floors and runs. Without these the
+-- recorder fails every block after the migration (seen 8 October 2026).
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE pool_v2.chunk_last_ref TO innopool_observer, innopool_runtime;
+GRANT SELECT ON TABLE pool_v2.retention_floors, pool_v2.retention_runs TO innopool_observer, innopool_runtime;
+-- Migration 020: metadata only; workers fetch the public binary directly.
+GRANT SELECT, INSERT ON TABLE pool_v2.reservation_binaries TO innopool_runtime;
+GRANT SELECT ON TABLE pool_v2.compact_block_copies TO innopool_observer, innopool_runtime;
+
+-- Migration 022: operators alone append replay proofs; services can read them.
+REVOKE ALL ON TABLE pool_v2.observation_conflict_resolutions, pool_v2.unresolved_observation_conflicts FROM innopool_observer, innopool_runtime;
+GRANT SELECT ON TABLE pool_v2.observation_conflict_resolutions, pool_v2.unresolved_observation_conflicts TO innopool_observer, innopool_runtime;
+
+-- Migration 023: block status and round coverage read the missing-block
+-- tolerance; only the owner role appends policy revisions.
+GRANT SELECT ON TABLE pool_v2.missing_block_policies TO innopool_observer, innopool_runtime;
+
+-- Migration 024: the coordinator remembers checked archives and reuses them.
+GRANT SELECT, INSERT ON TABLE pool_v2.verified_binaries TO innopool_runtime;
+-- Migration 025: the coordinator records and reads whole-network selection references.
+GRANT SELECT, INSERT ON TABLE pool_v2.reference_captures TO innopool_runtime;
+-- Migration 027: the API appends spending caps; reservations, sends and health checks read them.
+GRANT SELECT, INSERT ON TABLE pool_v2.spending_caps TO innopool_runtime;
+GRANT SELECT ON TABLE pool_v2.spending_caps TO innopool_observer;

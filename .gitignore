@@ -1,0 +1,12 @@
+# Local secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Misc
+*.log
+.DS_Store

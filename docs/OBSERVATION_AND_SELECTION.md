@@ -1,0 +1,167 @@
+# Block history and work selection
+
+The observation layer provides independent collection, durable replay, exact
+member credit attribution and a pure selector. It does not itself enable
+benchmark submission or settle rewards. The coordinator and worker
+integrations are implemented separately.
+
+## Collection and recovery
+
+The lean storage implementation saves validated pool inputs and best network
+reference summaries. It retains legacy readers and a guarded backfill path.
+See [lean storage](LEAN_STORAGE.md) for fields and deployment requirements.
+The full-snapshot encoding below describes the legacy format that remains
+readable during conversion. New successful captures use one compact blob.
+
+The pool-scoped capture reads, each block, the block header, the algorithm,
+challenge and OPoW tables and only the pool's own benchmark feed: six
+requests and under one megabyte instead of one feed per active player. Other
+players' qualifier counts still arrive inside every algorithm record and are
+reconciled against the OPoW and challenge totals, so a truncated or
+inconsistent block is rejected, and the pool's own counts are checked against
+its own bundles. Member credit depends only on those inputs. The whole
+network is read separately, on demand, for selection references; see
+[lean storage](LEAN_STORAGE.md) for fields and deployment requirements.
+A restarted collector resumes after the newest recorded block, so the current
+head is not captured a second time in a newer format. A same-block conflict
+between a legacy and a pool-scoped capture is resolved only under the
+`format-boundary-projection-v1` policy described there.
+
+`tools/observe_tig_v2.py` runs separately from the API and scheduler. Its capture
+thread saves raw evidence to a local spool before a separate recorder thread
+touches PostgreSQL. A database outage, lock or recovery backlog cannot stop the
+capture thread. Immutable response records are content-addressed and compressed
+once across repeated blocks, both in the spool and in PostgreSQL. A block's
+manifest stores each list of records as content-defined pages of raw record
+digests, the block's active-id lists as sorted pages of ids, and any other
+oversized value as one chunk; pages are deduplicated chunks like the records,
+and the manifest tree is itself stored as one compressed chunk referenced from
+the capture row. Lists are kept in digest order, so an unchanged list costs
+nothing on the next block. Measured on recorded live blocks, a block
+costs about 250 KB of new storage instead of about 950 KB, of which 80 KB is
+the changed records themselves. Replays return the canonical order, which the
+snapshot validation does not depend on; all original fields are kept and every
+checksum is verified when replaying. Manifests recorded before the digest-order
+format keep their inline record lists in the API's order and replay unchanged.
+Custody and report captures keep their original order, since there it can
+carry meaning.
+
+Use a separate spool per collector and run the redundant collector in a different
+failure domain. Both can record the same block into the database: block identity
+and credit keys deduplicate it. Neither has a TIG API key or token signing key.
+Back up the database **and** spool chunks/manifests. A backup cannot recover an
+unobserved block. Do not delete these records using legacy retention scripts;
+bounded-life evidence expires only through the
+[retention job](EVIDENCE_RETENTION.md).
+
+After separately applying the v2 migrations, set `POOL_V2_DATABASE_DSN` in the
+service environment and run, for example:
+
+```sh
+python3 tools/observe_tig_v2.py --collector primary \
+  --pool-player-id YOUR_POOL_ADDRESS \
+  --spool /var/lib/innopool-v2/observations --launch-height YOUR_START_HEIGHT
+```
+
+`--captures 2` performs a finite validation run. Exit 0 means all pending evidence
+was recorded and no known coverage gap/conflict remains; exit 1 means local
+evidence awaits recording, and exit 2 means a gap or conflict remains. Continuous
+mode logs lag, missing heights, failed capture and conflicting observations.
+It retries incomplete captures while the block remains observable. Startup
+requires an explicit, permanent collection start; it cannot silently move that
+start past a missing block.
+
+The database tracks latest observed height separately from the highest contiguous
+complete height. Mixed, truncated and failed responses retain their partial raw
+evidence without becoming complete blocks. Another collector can fill a gap and
+advance the contiguous cursor. A conflicting block identity or accounting input
+stops use of that height pending investigation; it cannot overwrite an accepted
+record or silently replace already recorded credit. Conflict resolution needs
+explicit reviewed recovery, not automatic selection of whichever source arrived
+last.
+
+Stale timestamps generate alerts but do not prevent preserving otherwise complete
+historical observations. The work selector separately refuses stale snapshots.
+In live validation, normal and cache-busted reads returned the same head
+even when its protocol timestamp lagged wall time; `Cache-Control: max-age=15`
+alone did not explain that lag. Configure and monitor freshness based on the
+chosen deployment, without treating an older timestamp as proof of a missing or
+expired benchmark.
+
+## Credit and coverage
+
+`qualifiers.credit_block()` replays a validated block, reconstructs D4 exact
+fractional bundle credit and joins every pool benchmark to its immutable member
+owner and confirmed handover. Missing ownership is an accounting gap. Fractions
+are stored per benchmark/block; later fraud does not rewrite them. Reprocessing
+the same block checks the prior rule and ownership digest and cannot credit twice.
+
+The block's reward round owns its credit. A benchmark's creation round stays on
+its separate reservation. The adapter checks the deployed block-round mapping
+against configured blocks per round; this does **not** establish the separate
+creation/reporting-round mapping, which is a separate
+[protocol validation](PROTOCOL_VALIDATION.md) check.
+
+`round_credits()` requires the round to have ended, every observed block to
+carry its credit marker, no unresolved conflicting block, and no more
+unresolved missing heights than the
+[bounded tolerance](ROUND_SETTLEMENT.md#bounded-missing-block-tolerance)
+allows; tolerated heights count as zero credit. An entirely observed,
+attributed zero-credit round is distinct from a round with no observed block,
+which stays held. A gap in one round does not prevent use of a different
+covered round. This check gates settlement; it does not delay independently
+eligible collateral returns.
+
+## Selector
+
+`selection.choose()` uses exactly one validated snapshot and matching reference
+index. The pinned compute-type adapter supports the nine CPU verification types
+and `aws_g4dn` for GPU currently enumerated by TIG. Unknown or incompatible offers
+fail before reservation.
+
+It selects the compatible challenge with the fewest pool qualifying bundles,
+breaks ties uniformly, then selects its usable algorithm with the highest exact
+overall adoption. For each active track it copies the hyperparameters of that
+algorithm's highest-scoring active bundle, taken from the benchmark that produced
+it; equal scores use benchmark ID and active-array index. Only a complete absence
+of such a bundle produces JSON `null`, so TIG uses the algorithm's defaults.
+With pool-scoped captures that bundle comes from a separate whole-network
+reference, read by the coordinator only while a member is waiting for work
+and the newest stored reference is older than `reference_max_age_seconds`
+(default 1800). The reservation records the reference capture's identity,
+block and digest beside the credited block. A reference from after the
+current block, or older than the configured age, is refused.
+
+Bundle counts use exactly each track's minimum, falling back to the challenge
+minimum when TIG does not provide a track-specific minimum. Fuel defaults to the
+protocol maximum, with a validated operator override. All tracks are included;
+`settings.track_id` is an empty placeholder because TIG chooses the actual track.
+The selector records candidates, counts, adoption units, draws, reference
+bundles, parameters and
+binary metadata. Collateral uses the largest proposed
+track; the funds transaction applies the member's current multiplier afterwards.
+Fee capacity likewise covers the largest proposed track. The deployed Rust
+contract multiplies the field named `per_nonce_fee` by **bundle count**, which is
+the calculation used here.
+
+## Validation and remaining integration
+
+Tests replay the existing live fixtures and exercise CPU/GPU filtering, exact
+adoption comparisons, random-tie candidates, best references, `null` defaults,
+stale/missing inputs, archive deduplication, replica capture, database-outage
+spooling, unknown ownership, gap recovery, conflicting data and complete rounds
+on either side of a gap. Run the full suite using the isolated test instructions
+in [MEMBER_FUNDS.md](MEMBER_FUNDS.md).
+
+A finite live run has recorded complete consecutive blocks into the
+PostgreSQL/spool implementation. The chosen start height had advanced before
+the first complete capture; the collector correctly retained that missing
+height and did not advance its contiguous cursor past it. That was a read-only
+test, with no member liabilities.
+
+The primary collector runs continuously and the coordinator performs
+current-head checks before precommit submission. Database backup/restore
+protection covers verified bases, continuous WAL and bounded pending-file
+snapshots. External alerts and an independent recovery collector are operator
+decisions; those, and the checks that remain open, are listed in
+[ROADMAP.md](ROADMAP.md).

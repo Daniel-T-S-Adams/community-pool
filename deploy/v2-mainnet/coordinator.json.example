@@ -1,0 +1,15 @@
+{
+  "tig_api_url": "https://mainnet-api.tig.foundation",
+  "pool_player_id": "REPLACE_POOL_WALLET",
+  "public_origin": "https://REPLACE_POOL_API_HOSTNAME",
+  "require_pilot_limits": false,
+  "submissions_enabled": false,
+  "new_work_enabled": false,
+  "binary_hosts": [
+    "mainnet-api.tig.foundation",
+    "media.githubusercontent.com"
+  ],
+  "max_block_age": 120,
+  "binary_reuse_seconds": 86400,
+  "reference_max_age_seconds": 1800
+}

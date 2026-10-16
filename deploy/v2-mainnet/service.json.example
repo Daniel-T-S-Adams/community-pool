@@ -1,0 +1,27 @@
+{
+  "origin": "https://REPLACE_POOL_HOSTNAME",
+  "api_origin": "https://REPLACE_POOL_API_HOSTNAME",
+  "chain_id": 8453,
+  "pool_player_id": "REPLACE_POOL_WALLET",
+  "tig_api_url": "https://mainnet-api.tig.foundation",
+  "require_pilot_limits": false,
+  "funds_enabled": false,
+  "work_enabled": false,
+  "settlement_enabled": false,
+  "offered_resources": ["CPU"],
+  "operator_income_wallet": null,
+  "operator_tig_reserve_units": null,
+  "custody_network": {
+    "chain_id": 8453,
+    "token": "0x0c03ce270b4826ec62e7dd007f0b716068639f7b",
+    "custody": "REPLACE_POOL_WALLET",
+    "confirmations": 12,
+    "require_finalized": true
+  },
+  "custody_rpc_url": "https://mainnet.base.org",
+  "custody_trace_rpc_url": "https://base-rpc.publicnode.com",
+  "withdrawal_fee_model": "op-jovian",
+  "build_commit": "REPLACE_TESTED_POOL_COMMIT",
+  "release_manifest_file": "/etc/innopool-v2-mainnet/release-manifest.json",
+  "worker_installer_file": "/etc/innopool-v2-mainnet/install_worker_v2.py"
+}
