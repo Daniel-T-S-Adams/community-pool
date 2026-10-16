@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert legacy full snapshots; optionally prune backed compact replacements.
+"""Convert full-snapshot captures; optionally prune backed compact replacements.
 
 Apply migrations 020–022 and the updated grants first. Backfill is additive.
 Before --prune, take the next verified database backup so it contains those

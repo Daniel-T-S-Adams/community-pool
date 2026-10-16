@@ -1,5 +1,5 @@
 [Unit]
-Description=InnoPool v2 mainnet application resource budget
+Description=Community Pool mainnet application resource budget
 
 [Slice]
 CPUAccounting=yes

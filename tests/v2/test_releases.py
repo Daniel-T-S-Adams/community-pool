@@ -34,7 +34,7 @@ class ReleaseValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):releases.validate(manifest,'a'*40,INSTALLER+b'changed')
         for change in ('repository','commit','tag','state','image'):
             invalid=deepcopy(manifest)
-            if change=='repository':invalid['worker']['repository']='https://github.com/rootztigmod/innopool-slave.git'
+            if change=='repository':invalid['worker']['repository']='https://github.com/example/other-worker.git'
             elif change=='commit':invalid['worker']['commit']='main'
             elif change=='tag':invalid['worker']['tag']='../branch'
             elif change=='state':invalid['worker']['state_version']=2

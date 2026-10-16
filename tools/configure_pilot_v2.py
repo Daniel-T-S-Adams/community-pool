@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install immutable CPU testnet limits in a fresh, migrated pilot database."""
+"""Install the immutable CPU pilot limits, which require TIG testnet, in a fresh migrated database."""
 
 import argparse
 import json

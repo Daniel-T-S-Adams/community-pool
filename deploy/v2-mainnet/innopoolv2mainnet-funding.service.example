@@ -1,5 +1,5 @@
 [Unit]
-Description=InnoPool v2 mainnet funding
+Description=Community Pool mainnet funding
 After=network-online.target
 Wants=network-online.target
 

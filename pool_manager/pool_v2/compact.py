@@ -53,8 +53,8 @@ def compact_observation(observation, *, identity_version=2):
     feed = observation["players"].get(player, observation.get("pool_pending"))
     if not isinstance(feed, dict):
         raise ProtocolDataError("compact capture needs the complete pool feed")
-    # Legacy block identity hashes include the pool feed's record ordering.
-    # Preserve both accepted encodings so recapturing a legacy block cannot
+    # Full-snapshot block identity hashes include the pool feed's record ordering.
+    # Preserve both accepted encodings so recapturing a full-snapshot block cannot
     # create a false conflict during the transition.
     from .block_observer import _semantic, canonical_observation
     canonical = dict(observation)
@@ -65,7 +65,7 @@ def compact_observation(observation, *, identity_version=2):
     source_digests = {_semantic(snapshot, observation), _semantic(snapshot, canonical)}
     v1_source_digest = _semantic(snapshot, canonical)
     if identity_version == 2:
-        # Paged legacy manifests canonicalized header record lists as well.
+        # Paged full-snapshot manifests canonicalized header record lists as well.
         # Keep the original header in the payload, but compare its replayable
         # encoding when identifying a block. Retain the v1 identity too.
         canonical['start'] = deepcopy(observation['start'])
@@ -108,7 +108,7 @@ def compact_observation(observation, *, identity_version=2):
     if identity_version == 2:
         result['source_identity_version'] = 2
         # Existing compact observations have immutable v1 projection hashes.
-        # Accept both original and legacy header encodings during recapture.
+        # Accept both header encodings during recapture.
         old = deepcopy(result)
         old.pop('source_identity_version')
         old['source_semantic_digest'] = v1_source_digest

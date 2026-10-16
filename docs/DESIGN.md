@@ -109,7 +109,7 @@ Implementation defaults proposed for the plan, rather than additional economic r
 
 The pool repository was inspected at `19a7caf`; the member worker repository at `14109c9`.
 
-At the 20 September baseline inspection, the original checkouts used the upstream `main` branches. The pool installer defaulted to the upstream worker and the worker startup fetched/reset its checkout; both Compose configurations used fixed container names. These findings explain the replacement design. Current development uses the two user-owned forks and a pinned v2 installer; original Git history is preserved at the baseline commits linked below. See the current implementation status for the actual release workflow.
+At the 20 September baseline inspection, the original checkouts used the upstream `main` branches. The pool installer defaulted to the upstream worker and the worker startup fetched/reset its checkout; both Compose configurations used fixed container names. These findings explain the replacement design. Current development uses the two user-owned forks and a pinned installer; original Git history is preserved at the baseline commits linked below. See the current implementation status for the actual release workflow.
 
 | Existing component | Finding and redesign consequence |
 |---|---|
@@ -162,7 +162,7 @@ flowchart LR
     Network --> Chain
 ```
 
-Suggested modules under `tig-pool/pool_manager/pool_v2/`:
+Suggested modules under `pool_manager/pool_v2/`:
 
 | Module | Responsibility |
 |---|---|
@@ -446,7 +446,6 @@ Core invariants:
 - Member allocations plus the total operator allocation equal the final pot exactly. With zero total credit, the operator receives the whole pot and members receive zero.
 - Submission costs and withdrawal transaction fees debit operator funds only; the full requested withdrawal amount reaches the member.
 - Historical credit, benchmark ownership, journal entries, and settlement inputs survive operational cleanup.
-- There is no live legacy process changing new-system allocation or benchmark ownership.
 
 Keep financial records and settlement evidence durable, with tested backup and restoration. Large execution artifacts may have a separate retention policy, but unresolved benchmarks and reports must remain recoverable. Do not make the current 14-day cleanup responsible for the new records.
 
@@ -461,7 +460,7 @@ Use ordinary unit tests for selection and allocation mathematics, real PostgreSQ
 | Installer finds a checkout belonging to an unexpected repository | Stop without resetting it or overwriting its configuration or data. |
 | New deployment starts or updates on a host with the original deployment | Services, containers, images, ports, and data remain separate; the original deployment is unaffected. |
 | Worker restarts or an upstream branch changes | Installed code remains pinned; only an explicit compatible fork release update changes it. |
-| Legacy or incompatible worker requests work | Reject the protocol version before reserving funds or assigning a benchmark. |
+| An outdated or incompatible worker requests work | Reject the protocol version before reserving funds or assigning a benchmark. |
 | Paired fork release is rebuilt and staged | Recorded commits and image references reproduce the tested server/client pair. |
 | CPU request while a GPU challenge has fewer qualifiers | Only compatible CPU challenges are considered. |
 | Several equal-minimum challenges | Uniform selection among the tied eligible set, with reproducible recorded evidence. |

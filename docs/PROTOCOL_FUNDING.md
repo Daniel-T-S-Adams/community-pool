@@ -20,11 +20,11 @@ benchmarker address to be the same. Both identities are frozen in the database
 under the same lock, whichever monitor initializes first.
 
 ```sh
-export POOL_V2_DATABASE_DSN='<isolated v2 runtime database connection>'
+export POOL_V2_DATABASE_DSN='<runtime database connection>'
 python3 tools/observe_funding_v2.py \
   --api-url https://mainnet-api.tig.foundation \
   --player-id '<dedicated custody and benchmarker address>' \
-  --spool '<persistent v2 protocol funding archive>'
+  --spool '<persistent protocol funding archive>'
 ```
 
 The collector makes public GET requests only. It fsyncs complete and failed
@@ -55,12 +55,12 @@ one-time setup operation for this credit. After migrating and binding the
 verified testnet custody identity, before accepting any work, run:
 
 ```sh
-export POOL_V2_DATABASE_DSN='<isolated v2 testnet database connection>'
+export POOL_V2_DATABASE_DSN='<testnet pool database connection>'
 python3 tools/initialize_testnet_credit_v2.py \
   --api-url https://testnet-api.tig.foundation \
   --player-id '<dedicated custody and benchmarker address>' \
   --actor '<operator identity>' \
-  --spool '<persistent v2 protocol funding archive>'
+  --spool '<persistent protocol funding archive>'
 ```
 
 This command needs database setup authority, not the TIG API key. It archives
@@ -151,8 +151,8 @@ outage replay and the withdrawal migration. Chromium exercises the complete
 manual top-up and confirmation flow against the real API with simulated chain
 and TIG observations.
 
-This adapter does not classify unknown legacy protocol balances, automatically
-reimburse arbitrary expenses, or create reward receipts. Those need explicit
+This adapter does not classify unexplained pre-existing protocol balances,
+automatically reimburse arbitrary expenses, or create reward receipts. Those need explicit
 audited evidence. Deployment must initialize both custody and funding monitors
 before enabling live work. [ROADMAP.md](ROADMAP.md) lists what is not
 implemented or not yet validated.

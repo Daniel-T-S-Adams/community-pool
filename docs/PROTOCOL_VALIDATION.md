@@ -15,7 +15,7 @@ From this repository, using Python 3.12 and its standard library:
 
 ```sh
 python3 tools/probe_tig_v2.py \
-  --output /tmp/innopool-v2-observations-new \
+  --output /tmp/community-pool-observations \
   --snapshots 2 --max-wait 240 \
   --reports-round 129 --reports-round 130
 

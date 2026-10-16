@@ -1,4 +1,4 @@
-"""Isolated v2 API factory. Importing it does not start legacy pool processes."""
+"""API factory. Importing it starts no processes."""
 
 from dataclasses import dataclass
 from decimal import Decimal

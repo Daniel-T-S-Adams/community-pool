@@ -8,9 +8,9 @@ integrations are implemented separately.
 ## Collection and recovery
 
 The lean storage implementation saves validated pool inputs and best network
-reference summaries. It retains legacy readers and a guarded backfill path.
+reference summaries. It retains full-snapshot readers and a guarded backfill path.
 See [lean storage](LEAN_STORAGE.md) for fields and deployment requirements.
-The full-snapshot encoding below describes the legacy format that remains
+The full-snapshot encoding below describes the original format, which remains
 readable during conversion. New successful captures use one compact blob.
 
 The pool-scoped capture reads, each block, the block header, the algorithm,
@@ -24,7 +24,7 @@ network is read separately, on demand, for selection references; see
 [lean storage](LEAN_STORAGE.md) for fields and deployment requirements.
 A restarted collector resumes after the newest recorded block, so the current
 head is not captured a second time in a newer format. A same-block conflict
-between a legacy and a pool-scoped capture is resolved only under the
+between a full-snapshot and a pool-scoped capture is resolved only under the
 `format-boundary-projection-v1` policy described there.
 
 `tools/observe_tig_v2.py` runs separately from the API and scheduler. Its capture
@@ -50,17 +50,17 @@ Use a separate spool per collector and run the redundant collector in a differen
 failure domain. Both can record the same block into the database: block identity
 and credit keys deduplicate it. Neither has a TIG API key or token signing key.
 Back up the database **and** spool chunks/manifests. A backup cannot recover an
-unobserved block. Do not delete these records using legacy retention scripts;
+unobserved block. Do not delete these records with ad hoc scripts;
 bounded-life evidence expires only through the
 [retention job](EVIDENCE_RETENTION.md).
 
-After separately applying the v2 migrations, set `POOL_V2_DATABASE_DSN` in the
+After separately applying the migrations, set `POOL_V2_DATABASE_DSN` in the
 service environment and run, for example:
 
 ```sh
 python3 tools/observe_tig_v2.py --collector primary \
   --pool-player-id YOUR_POOL_ADDRESS \
-  --spool /var/lib/innopool-v2/observations --launch-height YOUR_START_HEIGHT
+  --spool /var/lib/community-pool/observations --launch-height YOUR_START_HEIGHT
 ```
 
 `--captures 2` performs a finite validation run. Exit 0 means all pending evidence

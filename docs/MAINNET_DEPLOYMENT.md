@@ -17,8 +17,7 @@ maximum total for the pool wallet's mainnet protocol-fee top-ups (for example
 **10 TIG**) and a native-transaction-fee ceiling per spending wallet (for
 example **0.0005 Base ETH**). This authorizes funding that fee balance; it does
 not enable benchmark work or other pool spending. TIG top-ups consume TIG from
-the pool wallet. Existing testnet collateral and observers remain on their own
-database.
+the pool wallet.
 
 **Funding check:** before initialization, confirm that the operator dashboard
 and an independent read-only mainnet TIG API capture agree on the total topped
@@ -90,8 +89,8 @@ optional, disabled-by-default raw-file copy; both choices are listed in
    Extract the pinned Git revision into
    `/opt/innopool-v2-mainnet/releases/<commit>`; runtime users cannot write it.
 2. Produce a **mainnet** runtime manifest for the actual worker architectures
-   and current challenges. Do not copy the testnet ARM runtime manifest into
-   production. Probe the mainnet API for the current set of CPU and GPU
+   and current challenges. Do not reuse a runtime manifest from another network
+   or architecture. Probe the mainnet API for the current set of CPU and GPU
    challenges. Verify the actual digest and executable compatibility before a
    member joins.
 3. Provision separate database and spool storage. A bounded probe capturing
@@ -111,14 +110,15 @@ optional, disabled-by-default raw-file copy; both choices are listed in
    host is not an independent archive.
 
 The mainnet application slice has a separate 1.5-CPU/2-GiB ceiling. Before
-sharing a host, review the combined testnet, mainnet, database and worker
-limits; separate slice limits alone do not impose a shared machine-wide
-ceiling. A worker belongs on its member's machine for the final test.
+sharing a host, review the combined limits of everything on it, including
+other pools, databases and workers; separate slice limits alone do not impose
+a shared machine-wide ceiling. A worker belongs on its member's machine for the
+final test.
 
 ## Isolate database and credentials
 
 1. Create a separate PostgreSQL database `innopool_v2_mainnet`, distinct from
-   the testnet database and from every name ending in `_test`. Use the pinned,
+   every other pool database and from every name ending in `_test`. Use the pinned,
    tested PostgreSQL version. If containerized, give it an explicit CPU/RAM
    limit, loopback-only port, unique volume and a supervised startup order.
 2. Use a migration owner and a separate runtime role. The runtime role must
@@ -135,9 +135,9 @@ ceiling. A worker belongs on its member's machine for the final test.
    root-owned and mode 0600; systemd reads its EnvironmentFile before changing
    user. Do not print or paste environment files into chat.
 4. Copy and fill the example JSON and environment files, removing the
-   `.example` suffix. Generate a fresh operator token. Do not copy the testnet
-   DSN, token, member sessions or fee grant. Leave all enable flags false.
-   `/etc/innopool-v2-mainnet/deployment.json` carries a `hosts` object with
+   `.example` suffix. Generate a fresh operator token. Do not copy another
+   deployment's DSN, token, member sessions or fee grant. Leave all enable
+   flags false. `/etc/innopool-v2-mainnet/deployment.json` carries a `hosts` object with
    the `primary` and `recovery` addresses; the backup, restore and
    pending-evidence tools read it, and the pending-evidence receiver refuses a
    source that is not the recorded primary.
@@ -229,7 +229,6 @@ sustained storage and funded takeover are listed in [the roadmap](ROADMAP.md).
 
 ## Launch stages
 
-Keep any outstanding testnet arbitration in a separate checklist item.
 Complete software tests, public historical replays, deposit withdrawals,
 production storage/TLS setup and independent recovery now. Final reward
 payment still requires the verified [TokenLocker lifecycle](REWARD_RECEIPTS.md)
@@ -243,9 +242,9 @@ operator's recorded spending cap (migration 027): without a cap row the pool
 commits no submission fee and reserves no custody gas, and every committed
 ceiling counts in full inside the rolling window. The operator records the cap
 through `POST /api/v2/operator/spending-cap` or the operator screen; the
-health check reports a missing cap or a window more than 90% committed. This
-repository's two-member pilot policy is **testnet-only** and separate from the
-mainnet cap.
+health check reports a missing cap or a window more than 90% committed. The
+optional two-member pilot policy only works against TIG testnet and is separate
+from the mainnet cap.
 
 With the budget authorized and members ready, start a small monitored pilot.
 Keep incomplete or unfunded reward

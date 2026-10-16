@@ -1,6 +1,6 @@
 # Operator-reviewed withdrawals
 
-V2 keeps the full requested TIG amount reserved while the operator reviews and
+The pool keeps the full requested TIG amount reserved while the operator reviews and
 sends a withdrawal using their own wallet software. The service holds no signing
 key and its RPC adapter cannot send transactions. Native transaction fees use
 separate operator funds, including fees on a failed or cancelled transaction.

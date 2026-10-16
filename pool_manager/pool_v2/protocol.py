@@ -1,6 +1,6 @@
-"""Validate observed TIG data before using it for v2 accounting.
+"""Validate observed TIG data before using it for pool accounting.
 
-This module is deliberately independent of the legacy scheduler and database.
+This module is deliberately independent of the database.
 An observation contains raw responses fetched between two reads of one block.
 It does not establish member ownership, receipt of money, or round settlement.
 """

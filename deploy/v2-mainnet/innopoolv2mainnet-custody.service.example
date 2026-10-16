@@ -1,5 +1,5 @@
 [Unit]
-Description=InnoPool v2 mainnet custody
+Description=Community Pool mainnet custody
 After=network-online.target
 Wants=network-online.target
 

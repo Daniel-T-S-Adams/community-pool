@@ -34,10 +34,10 @@ def backfill(database, *, player_id, limit=200, after_height=-1):
         try:
             observation, _ = BlockStore(database).read(row['id'])
             if observation.get('pool_player_id') != player_id:
-                raise ProtocolDataError('legacy capture does not bind the configured pool player')
+                raise ProtocolDataError('full-snapshot capture does not bind the configured pool player')
             projection = compact_observation(observation)
             if row['semantic_digest'] not in projection['source_semantic_digests']:
-                raise ProtocolDataError('compact projection does not preserve the legacy source identity')
+                raise ProtocolDataError('compact projection does not preserve the original source identity')
             snapshot = validate_snapshot(projection)
             raw = canonical_json(projection)
             with database.transaction() as cursor:
@@ -93,7 +93,7 @@ def prune(database, *, proof, limit=200):
 def collect_unused_chunks(database, *, proof, limit=5000):
     """Remove only chunks no surviving capture references, under the writer lock.
 
-    Run after backfill/pruning. Large remaining legacy captures make this
+    Run after backfill/pruning. Large remaining full-snapshot captures make this
     operation deliberately defer rather than interrupt live observation.
     """
     _integer(limit, 'chunk cleanup limit', 1)
@@ -105,7 +105,7 @@ def collect_unused_chunks(database, *, proof, limit=5000):
         cursor.execute("SELECT count(*) AS n FROM capture_attempts WHERE NOT (manifest ? 'expired') AND NOT (manifest ? 'compact_ref')")
         legacy = cursor.fetchone()['n']
         if legacy > 100:
-            return {'removed_chunks': 0, 'deferred': f'{legacy} legacy captures still retain full raw chunks'}
+            return {'removed_chunks': 0, 'deferred': f'{legacy} full-snapshot captures still retain full raw chunks'}
         cursor.execute("SET LOCAL pool_v2.retention TO 'on'")
         cursor.execute('CREATE TEMP TABLE live_compaction_chunks(digest text PRIMARY KEY) ON COMMIT DROP')
         cursor.execute("SELECT manifest FROM capture_attempts WHERE NOT (manifest ? 'expired')")

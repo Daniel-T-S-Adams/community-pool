@@ -1,5 +1,5 @@
 [Unit]
-Description=InnoPool v2 mainnet reports
+Description=Community Pool mainnet reports
 After=network-online.target
 Wants=network-online.target
 

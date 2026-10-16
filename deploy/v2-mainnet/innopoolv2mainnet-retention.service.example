@@ -1,5 +1,5 @@
 [Unit]
-Description=InnoPool evidence retention under the recorded policy
+Description=Community Pool evidence retention under the recorded policy
 After=innopoolv2mainnet-db.service
 Requires=innopoolv2mainnet-db.service
 [Service]

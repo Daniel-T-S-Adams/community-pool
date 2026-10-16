@@ -29,7 +29,7 @@ def main(argv=None):
     parser.add_argument("--api-url", default="https://mainnet-api.tig.foundation")
     parser.add_argument("--spool", required=True)
     parser.add_argument("--collector", required=True)
-    parser.add_argument("--recent-rounds", type=int, default=4, help="legacy compatibility option; collection now follows open obligations")
+    parser.add_argument("--recent-rounds", type=int, default=4, help="kept for compatibility; collection follows open obligations")
     parser.add_argument("--reporting-round", type=int, action="append", default=[], help="also poll an older unresolved protocol round")
     parser.add_argument("--player-id", help="public benchmarker address, for positive reporting-round associations")
     parser.add_argument("--challenge-id", action="append", default=[])

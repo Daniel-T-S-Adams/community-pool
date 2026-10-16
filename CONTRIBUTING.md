@@ -15,9 +15,9 @@ python3 -m venv .venv
 .venv/bin/python -m playwright install --with-deps --only-shell chromium   # browser flow tests
 
 docker run -d --name pool-test-db -e POSTGRES_HOST_AUTH_METHOD=trust \
-  -e POSTGRES_DB=innopool_v2_test -p 127.0.0.1:5432:5432 postgres:18
+  -e POSTGRES_DB=community_pool_test -p 127.0.0.1:5432:5432 postgres:18
 
-export POOL_V2_TEST_DSN="host=127.0.0.1 port=5432 user=postgres dbname=innopool_v2_test"
+export POOL_V2_TEST_DSN="host=127.0.0.1 port=5432 user=postgres dbname=community_pool_test"
 export POOL_V2_WORKER_CHECKOUT=/path/to/community-pool-worker   # paired worker API tests
 export POOL_V2_BROWSER_TESTS=1
 .venv/bin/python -m unittest discover -s tests/v2 -v

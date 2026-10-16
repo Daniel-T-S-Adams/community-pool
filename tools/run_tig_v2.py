@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the isolated v2 coordinator against an already migrated v2 database."""
+"""Run the coordinator against an already migrated pool database."""
 
 import argparse
 import json

@@ -40,3 +40,28 @@ notes.
 | External alerts | The health check writes a status file; forwarding it to email, chat or a pager is the operator's choice. |
 | Evidence copies | Whether the recovery host also keeps a raw copy of the primary's block and report spools, in addition to the database backups and pending-file snapshots. |
 | Independent recovery collector | Whether the recovery host observes TIG independently so that a takeover has its own evidence stream. |
+
+## Identifiers kept for compatibility
+
+The pool is Community Pool. Some identifiers still say `innopool`, `v2` or
+`legacy` because deployed hosts, member workers, backups and recorded data
+depend on them. Renaming any of them is a paired release with its own rollback
+plan, not a text edit. Until that release, they stay as listed here.
+
+| Identifier | Where it lives | Why it stays |
+|---|---|---|
+| `X-InnoPool-Version` header | Member protocol, website, every worker | Every deployed worker sends it on every work route. |
+| `innopoolv2mainnet-*` units and `innopoolv2mainnet.slice` | Both hosts, `deploy/v2-mainnet/` templates | Installed units; the release and operations scripts name them. |
+| `/opt/innopool-v2-mainnet`, `/etc/innopool-v2-mainnet`, `/var/lib/innopool-v2-mainnet*` | Both hosts | Release, settings, spool and backup paths. |
+| Database `innopool_v2_mainnet`, schema `pool_v2`, roles `innopool_owner`, `innopool_runtime`, `innopool_observer`, `innopool_replication`, slot `innopool_germany_archive` | Primary and recovery databases | They hold the ledger and the backups. |
+| Unix account `innopoolmainnet`, group `innopoolbackup` | Both hosts | File ownership of releases, spools and backups. |
+| `innopool-v2-member` install directory, `installation-v2.json`, marker kind `innopool-v2-worker` | Every member machine | The installer refuses a directory whose marker differs. |
+| Container labels `innopool.v2.owner` and `innopool.v2.benchmark`, container names `innopool-v2-<namespace>-<key>`, transient units `innopool-member-helper-*` | Member machines and helpers | A worker manages only containers carrying its own labels; renaming orphans benchmarks in flight. |
+| Packages `pool_manager.pool_v2` and `worker_v2`, `tools/*_v2.py`, `deploy/v2-mainnet/`, `tests/v2/`, `requirements-v2.txt` | Both repositories | Unit `ExecStart` lines, the installer's launcher, members' helper commands, CI and the release tooling reference these paths. |
+| `POOL_V2_*` environment variables | Host environment files, members' `POOL_V2_EXECUTION_TOKEN` | Configuration keys on every host and member machine. |
+| Advisory lock seed `innopool-v2:` in `database.py`, `application_name="innopool-v2"` | Pool processes | Every process must derive the same lock keys; change only in a release that restarts all of them together. |
+| Logger names and User-Agent strings (`innopool-v2-*`), cache-buster `_innopool_read` | Pool and worker processes | Harmless to rename, but worker strings ship only through a paired release. |
+| Stored values `legacy-compact-record-order-v1`, `legacy_*` proof fields, `pool-scoped-v2`, `pool-network-v1`, `evidence-retention-v2`, `copy-best-active-bundle-v2`, `tig-testnet-starter`, `testnet-cpu`, `innopool-pending-evidence-v1` | Database rows and archived evidence | Recorded data; migrations are checksummed and cannot be edited. |
+| nginx variables `$innopool_cloudflare_peer`, `$innopool_asset_cache_control` | `deploy/v2-mainnet/nginx.conf.example`, host nginx | Defined by the host-generated Cloudflare include. |
+| Branch `release/v2` | Both repositories | CI triggers and the release procedure follow it. |
+| `pool_manager/requirements-v2.txt`, `deploy/v2-mainnet/grant-runtime-observer-privileges.sql`, `tools/install_worker_v2.py` | Both repositories | The release step checks the first two are byte-identical to the previous release and records the installer's checksum, so even a comment change waits for a release that expects it. |

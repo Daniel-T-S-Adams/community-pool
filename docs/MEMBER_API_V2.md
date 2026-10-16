@@ -1,8 +1,8 @@
 # Member benchmark protocol 2.0
 
-This contract pairs `pool_manager.pool_v2` with the separate `worker_v2`
-reference client in the `innopool-slave-v2` repository and compatible
-member-managed masters. Members may distribute a benchmark's nonce computation
+This contract pairs `pool_manager.pool_v2` with the `worker_v2` reference
+client in the separate worker repository and with compatible member-managed
+masters. Members may distribute a benchmark's nonce computation
 across their own compatible machines and return one complete result. They manage
 internal communication and scheduling. See the [master integration contract](MEMBER_MASTER_V2.md).
 All work routes require
@@ -116,10 +116,10 @@ The API, transactional queue, handover and upload storage are implemented.
 The [submission coordinator](SUBMISSION_RECOVERY.md) persists external-call
 fences and recovers accepted work from archived TIG observations. Its tests
 currently supply explicit simulated acceptance, sampling and activation
-evidence; no API module starts a legacy scheduler or submits anything on import.
+evidence; importing an API module starts nothing and submits nothing.
 Both funds and work flags default to false.
 
-The v2 API also serves [member and operator screens](DASHBOARD_V2.md).
+The API also serves [member and operator screens](DASHBOARD_V2.md).
 Its audited operator pause fences new reservations and first precommit sends
 while retaining the existing-work routes above. A separate settlement flag
 defaults to false until live finalization adapters are configured and verified.
@@ -132,8 +132,9 @@ TIG responses in that test are simulated. Separate worker tests check durable
 restart recovery and reproduce a recorded public TIG Merkle root.
 
 `GET /api/v2/artifacts/{sha256}` serves the exact saved public algorithm
-archive for legacy assignments. The storage cleanup gives new assignments
-a direct TIG/GitHub URL and saves only checked binary metadata. The worker
+archive for assignments issued before direct downloads. The storage cleanup
+gives new assignments a direct TIG/GitHub URL and saves only checked binary
+metadata. The worker
 verifies either source against the assignment's checksum before
 extracting the expected named library. It does not require a token: these are
 already-public TIG algorithm binaries, and no member files are served.
