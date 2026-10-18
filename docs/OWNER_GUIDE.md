@@ -63,6 +63,36 @@ API key, worker execution tokens and wallet keys. It lets you administer the
 pool's records; the pool custody wallet must separately sign outgoing transfers.
 If you are also a member, use a separate member tab and the member wallet.
 
+**If the operator token is lost or leaked, replace it on the server; nothing
+else depends on it.** The token is a single secret kept in the root-only
+service environment file (`/etc/innopool-v2-mainnet/runtime.env` in the
+reference deployment). The API hashes it at startup and compares every
+operator request against that hash. The token itself is never written to the
+database, and no record depends on its value; audit rows name the actor by a
+short prefix of the hash, so a rotation only changes that prefix on later rows.
+
+While the token is unavailable, only the operator surface is closed: the
+dashboard, pause and unpause, receipts and deposit attributions, the spending
+cap, round crediting and withdrawal preparation. Members, workers, observers,
+backups and the health check continue, and no funds are exposed, because the
+token cannot sign a transfer. There is no reset flow on the website or in the
+API; a server administrator has three routes:
+
+1. **Read it back.** It is still in the environment file on the primary
+   server. A token lost from a password manager is not lost from the server.
+2. **Restore it.** The daily encrypted configuration export contains the whole
+   configuration directory, including the environment file.
+3. **Rotate it.** Generate a fresh random value of 32 to 128 characters,
+   replace it in the environment file and restart the API service. The old
+   token stops working at that restart. Rotate whenever the token may have
+   leaked: until then a holder can administer records, though still not move
+   funds.
+
+The recovery server does not carry the environment file until a takeover, so
+carry the token over from the configuration export or set a fresh one when
+activating it. Keep the token in a password manager with the other server
+credentials, and never paste it into chat tools, tickets or Git.
+
 **For the daily check, start with the operator dashboard.** Review the latest
 observed block and listed gaps, **Observation alerts**, **Protocol
 confirmations**, **Wallet reconciliation**, and **Submission fee funding**.
