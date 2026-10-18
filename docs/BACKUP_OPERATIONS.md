@@ -175,13 +175,9 @@ incomplete; missing/conflicting anchors remain failures.
    rehearsal retains its evidence for inspection; do not overwrite a live
    database or attach live credentials to the test copy.
 
-This rehearsal has been performed against a real primary backup, replaying its
-post-backup transaction successfully. The full evidence audit has also verified
-every chunk digest and manifest reference of a raw evidence copy on the
-recovery server. Separately, a migration has been applied and replayed against
-a restored **funded pilot database** with member balances, both collateral
-holds, pending withdrawals and journal history unchanged. These are distinct
-tests; none of them is a funded mainnet takeover or a token transfer.
+The restore and migration rehearsals performed so far are recorded in
+[ROADMAP.md](ROADMAP.md#validated-so-far-and-not-yet); none of them is a funded
+mainnet takeover or a token transfer.
 
 ## Launch checks
 

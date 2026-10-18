@@ -84,7 +84,3 @@ The diagram shows pool connections and the optional member-managed helper
 arrangement. It does not establish validated multi-machine execution or a completed
 mainnet reward cycle. See [the roadmap](ROADMAP.md) for what has and has not
 been validated.
-
-To preview this Markdown file in VS Code, press **Ctrl+Shift+V**
-(**Cmd+Shift+V** on Mac). To open the preview beside the source, press
-**Ctrl+K**, then **V** (**Cmd+K**, then **V** on Mac).

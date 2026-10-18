@@ -1,6 +1,6 @@
 # Community Pool design
 
-Prepared 20 September 2026 as the design for a fresh pool and its member worker. Later clarifications are incorporated and supersede earlier wording.
+This is the design of Community Pool: the rules the pool enforces, the architecture that enforces them and the scenarios its tests cover. [ROADMAP.md](ROADMAP.md) lists what is not yet implemented or validated.
 
 ## 1. Intended result
 
@@ -10,15 +10,9 @@ The pool holds deposited TIG and received earnings in one wallet while recording
 
 For round X, the pool records each member's qualifying bundles at every block. After round X+2 ends and outcomes are known, the pool combines its final net TIG earnings for X with collateral forfeited for X. When members have qualifying credit, it takes a 5% operator fee and distributes the remaining 95% according to their cumulative qualifying-bundle counts during X. If total member qualifying credit is zero, the entire final round pot goes to the operator. Spendable earnings are credited only when the corresponding funds have actually been received. Withdrawals require operator review and an operator-sent transfer. The pool pays benchmark submission costs and withdrawal transaction fees from its own funds or operator share, without additional charges to members.
 
-The existing Python, FastAPI, PostgreSQL, Docker, website, protocol serialization, and verification components provide a useful foundation. The scheduler and financial accounting should be implemented as new, clearly bounded modules. Extending the current batch scheduler with more exceptions would retain assumptions that conflict with exclusive benchmark ownership.
+The pool core, the scheduler and the financial accounting are separate, clearly bounded modules on top of Python, FastAPI, PostgreSQL and Docker. The pool records its own history from launch: a TIG historical-block service is not needed to settle a round the pool captured completely. The credit rule shares qualifying credit equally among bundles tied at the cutoff, so the identities of TIG's winning tied bundles are not required. Complete eligible bundle data, authoritative qualifying totals and detection of collection gaps are verified before any payout.
 
-All redesign implementation belongs in the two forks. Preserve the original repositories and their existing deployment while developing, testing, and releasing the replacement as a coordinated pool-and-worker pair. Section 10 defines the fork setup and release workflow.
-
-**First implementation milestone:** demonstrate continuous collection of complete live TIG block data and public report/arbitration outcomes. The pool records its own history from launch; a TIG historical-block service is not a prerequisite for starting implementation or settling a round fully captured by the pool. The approved credit rule shares qualifying credit equally among bundles tied at the cutoff; exact identities of TIG's winning tied bundles are not required. Verify complete eligible bundle data, authoritative qualifying totals, and detection and handling of collection gaps before enabling payouts.
-
-This document incorporates the conversation's later clarifications. They supersede earlier wording in the owner\'s earlier answers, including its now-outdated statement that the operator fee can be left aside.
-
-## 2. Agreed operating rules
+## 2. Operating rules
 
 | Area | Required behavior |
 |---|---|
@@ -52,28 +46,26 @@ This document incorporates the conversation's later clarifications. They superse
 | Availability | Pending or estimated rewards cannot fund collateral or withdrawals. Only received, credited funds are available. |
 | Withdrawals | Member requests funds, operator checks and sends them to the member's wallet. Only unreserved funds may be requested. |
 | Withdrawal frequency | One successful withdrawal per member every seven days. Use a rolling interval, not calendar weeks. |
-| Launch | Start fresh. Do not import the old pool's effort-based earnings as new-system entitlements. |
-| Repository isolation | Implement in separate repositories preserving the history of both originals. The worker uses a native GitHub fork; the pool uses the user-approved independent repository copied from intact local Git history. Both are now public following the user's visibility change. Changes, pull requests, builds, and releases target these destinations. |
 
-The withdrawal interval starting at successful payment, reservation of pending withdrawal funds, and application of the fee to the full final pot were stated in the preceding design discussion. They are made explicit here so implementation has one consistent rule.
+The withdrawal interval starts at successful payment, pending withdrawal funds are reserved, and the fee applies to the full final pot; the detailed rules below make these explicit so the implementation has one consistent reading.
 
-## 3. Decision log
+## 3. Detailed rules
 
-Decisions D1–D6 are resolved and incorporated throughout the design. D6 confirms that the pool must establish that the member received the work before member responsibility begins. The technical data and protocol checks in Stage 0 remain necessary.
+Rules D1 to D8 refine the table above and are referenced by their labels throughout this document. D6 establishes that the pool must confirm the member received the work before member responsibility begins.
 
-**D1 — resolved: the pool covers both costs.** Benchmark submission costs and withdrawal transaction fees are paid from the pool's own funds or its 5% operator share. Do not charge members separately, deduct these costs from their collateral, reduce their withdrawal amount, or subtract operating expenses from the reward pot before the 5%/95% allocation. The operator supplies initial operating funds before fee income is available and tops them up when necessary.
+**D1 — the pool covers both costs.** Benchmark submission costs and withdrawal transaction fees are paid from the pool's own funds or its 5% operator share. Do not charge members separately, deduct these costs from their collateral, reduce their withdrawal amount, or subtract operating expenses from the reward pot before the 5%/95% allocation. The operator supplies initial operating funds before fee income is available and tops them up when necessary.
 
-**D2 — resolved: zero-credit round pots go to the operator.** If the round's total member qualifying credit is zero, allocate the whole final pot, including any forfeited collateral, to the operator. Apply the same finalization, complete-data, and funding requirements as any other settlement. Transfer the pot once; the normal 5% fee is not an additional transfer on top. Missing block data is not evidence of zero credit.
+**D2 — zero-credit round pots go to the operator.** If the round's total member qualifying credit is zero, allocate the whole final pot, including any forfeited collateral, to the operator. Apply the same finalization, complete-data, and funding requirements as any other settlement. Transfer the pot once; the normal 5% fee is not an additional transfer on top. Missing block data is not evidence of zero credit.
 
-**D3 — resolved: default hyperparameters when no reference exists.** If the selected algorithm has no currently active reference bundle on a required track, set that track's `hyperparameters` field to JSON `null`. This invokes the algorithm's defaults; do not substitute an empty object or the string `"null"`. Continue selection with the chosen algorithm and challenge, and keep the track in the precommit. Record that defaults were used because no reference existed. A failed or incomplete data fetch does not establish that no reference exists.
+**D3 — default hyperparameters when no reference exists.** If the selected algorithm has no currently active reference bundle on a required track, set that track's `hyperparameters` field to JSON `null`. This invokes the algorithm's defaults; do not substitute an empty object or the string `"null"`. Continue selection with the chosen algorithm and challenge, and keep the track in the precommit. Record that defaults were used because no reference existed. A failed or incomplete data fetch does not establish that no reference exists.
 
-**D4 — resolved: equal credit for tied bundles.** The operator confirmed that the pool should divide qualifying credit equally among tied bundles and should not require exact winning-bundle identities. Apply this accounting rule consistently using complete eligible bundle data and authoritative qualifying totals. Keep fractional credits exact through accumulation and reward calculation. This decision does not permit guessing missing bundle data or missing block totals.
+**D4 — equal credit for tied bundles.** The pool divides qualifying credit equally among tied bundles and does not require exact winning-bundle identities. Apply this accounting rule consistently using complete eligible bundle data and authoritative qualifying totals. Keep fractional credits exact through accumulation and reward calculation. This rule does not permit guessing missing bundle data or missing block totals.
 
-**D5 — resolved: per-member collateral multipliers apply to new benchmarks only.** The operator can set and change each member's multiplier in [0, 1]. Multiply the normal required collateral by that value. Capture it when reserving a new benchmark; later changes cannot reduce or increase existing holds, including reservations awaiting submission or reconciliation. A multiplier of 1 requires the full base collateral; 0 requires no member collateral. Release or forfeit the amount actually reserved for that benchmark. The multiplier does not change qualifying credit, reward weighting, slot limits, or the timing of collateral finalization.
+**D5 — per-member collateral multipliers apply to new benchmarks only.** The operator can set and change each member's multiplier in [0, 1]. Multiply the normal required collateral by that value. Capture it when reserving a new benchmark; later changes cannot reduce or increase existing holds, including reservations awaiting submission or reconciliation. A multiplier of 1 requires the full base collateral; 0 requires no member collateral. Release or forfeit the amount actually reserved for that benchmark. The multiplier does not change qualifying credit, reward weighting, slot limits, or the timing of collateral finalization.
 
-**D6 — resolved: confirm handover; return collateral if the member was never given the work.** The pool must confirm that the member received the complete benchmark assignment. Implement this with an authenticated acknowledgement from the member's client, durably recorded by the pool before execution starts. Making work available for retrieval alone does not establish handover. If TIG accepts a precommit but handover never completes before expiry, release the slot on definitive expiry and return the recorded collateral at the existing end-of-X+2 finalization point once the outcome and handover record are reconciled. Submission costs remain the operator's responsibility. Once handover is confirmed, the member is responsible for all subsequent failures, including pool infrastructure failures. A lost response after the acknowledgement was committed does not undo handover; recover the recorded confirmation through an idempotent retry or status lookup.
+**D6 — confirm handover; return collateral if the member was never given the work.** The pool must confirm that the member received the complete benchmark assignment. Implement this with an authenticated acknowledgement from the member's client, durably recorded by the pool before execution starts. Making work available for retrieval alone does not establish handover. If TIG accepts a precommit but handover never completes before expiry, release the slot on definitive expiry and return the recorded collateral at the existing end-of-X+2 finalization point once the outcome and handover record are reconciled. Submission costs remain the operator's responsibility. Once handover is confirmed, the member is responsible for all subsequent failures, including pool infrastructure failures. A lost response after the acknowledgement was committed does not undo handover; recover the recorded confirmation through an idempotent retry or status lookup.
 
-**D7 — resolved on 9 October: retain minimal pool evidence.** Members download
+**D7 — retain minimal pool evidence.** Members download
 algorithm archives from TIG's public GitHub sources; the pool keeps checked
 URL/hash metadata. Validate current network data, then retain pool credit
 inputs and compact selection references. Keep benchmark reporting-round
@@ -83,8 +75,8 @@ financial records and final decisions. Existing full snapshots may retire only
 after backed compact replacement and completed reconciliation/credit. Missing
 blocks remain settlement holds. See [lean storage](LEAN_STORAGE.md).
 
-**D8 — clarified on 11 October: member-managed master coordination.** The pool
-communicates with a member's master through the existing whole-benchmark API.
+**D8 — member-managed master coordination.** The pool
+communicates with a member's master through the whole-benchmark API.
 Members arrange communication and work distribution among their own compatible
 machines. Treat `capacity.workers` as available concurrent nonce computations
 for that offer, including member-managed remote capacity. Keep one immutable
@@ -93,59 +85,35 @@ the required evidence and supplies authoritative sampled proofs. No pool fleet
 registry or helper transport is required. The official reference worker remains
 a single-machine implementation. See [master integration](MEMBER_MASTER.md).
 
-Implementation defaults proposed for the plan, rather than additional economic rules:
+Implementation defaults, as distinct from economic rules:
 
 - A member has one verified withdrawal wallet. Execution tokens can be replaced without changing ownership or balances.
 - Initialize each member's collateral multiplier to 1 unless the operator sets another valid value. Store finite, exact decimals and round multiplied collateral up only once, to the smallest TIG token unit.
 - Allow one pending withdrawal per member. A rejection or cancellation before sending releases its reservation and does not start the seven-day cooldown.
 - Break equal algorithm adoption uniformly at random and record the draw. For equally good hyperparameter reference bundles, use a stable ordering by benchmark ID and bundle index.
-- Use the protocol's allowed maximum fuel budget as the initial fuel-budget default, matching the existing selection code's fallback. Record it explicitly in the work offer; copy only hyperparameters from the reference. Make this setting operator-configurable before launch.
+- Use the protocol's allowed maximum fuel budget as the initial fuel-budget default, matching the selection code's fallback. Record it explicitly in the work offer; copy only hyperparameters from the reference. Make this setting operator-configurable before launch.
 - Bind an accepted benchmark permanently to its requesting member before handover. Keep upstream acceptance, publication for retrieval, and confirmed member receipt as separate durable events. Use the receipt acknowledgement defined in section 6 as the D6 responsibility boundary; preserve the same owner throughout retries and recovery. Include this handover rule in the member interface and terms of work before launch.
 - Network, token contract, pool wallet, confirmation depth, and deployment addresses are deployment configuration. Verify them against the actual target network before accepting money.
 
-## 4. What inspection established, and what still needs proving
-
-### Existing repository
-
-The pool repository was inspected at `19a7caf`; the member worker repository at `14109c9`.
-
-At the 20 September baseline inspection, the original checkouts used the upstream `main` branches. The pool installer defaulted to the upstream worker and the worker startup fetched/reset its checkout; both Compose configurations used fixed container names. These findings explain the replacement design. Current development uses the two user-owned forks and a pinned installer; original Git history is preserved at the baseline commits linked below. See the current implementation status for the actual release workflow.
-
-| Existing component | Finding and redesign consequence |
-|---|---|
-| `master/slave_manager.py` and `job_manager.py` | Work ownership is recorded on batches, with reassignment and sharing logic. Replace that scheduling path with member-owned benchmarks. |
-| `precommit_manager.py` | Selection includes fleet-wide tuning and many capacity heuristics. Replace its decision logic with the agreed selection sequence. |
-| `submissions_manager.py` | Useful request shapes and serialization exist, but accepted precommit IDs and uncertain outcomes need stronger handling. Its automatic block-ID replacement cannot be reused without revalidating the recorded selection. |
-| `data_fetcher.py` | Can publish a new block alongside cached older maps, and fall back to cached tracks. Financial decisions and selection must require a complete, consistent snapshot. |
-| `revenue_split.py` and `work_credits.py` | Reward sampling and effort weighting do not implement cumulative qualifying-bundle credit. Replace their accounting role. |
-| `coinbase.py` | Sends percentage allocations to TIG. The new deployment must receive pool rewards centrally and stop publishing per-member splits. |
-| `retention.py` | Deletes operational benchmark history after a default 14 days. New ownership, collateral, credit, and settlement records must be excluded from this cleanup. |
-| `batch_audit.py` and `auditor` | Verification and evidence handling are useful. Adapt them to member-owned benchmarks and longer evidence retention. Local audit results must not be confused with final TIG arbitration. |
-| the original batch worker | Execution and artifact handling are reusable, but its protocol assumes assigned batches. A whole-benchmark reference client needs an explicit new interface. |
-
-### TIG data and protocol checks
+## 4. TIG protocol properties the design relies on
 
 The [official API schema](https://swagger.tig.foundation/) documents current block, algorithm, benchmark, track, and OPoW data, plus round-indexed reports/arbitrations and emissions. It also describes benchmark submission endpoints. Use current-block inputs for continuous collection and round-indexed inputs to reconcile final outcomes; a historical block API is a separate recovery capability.
 
-Read-only public API checks during this planning session found:
+The design relies on these properties of TIG's public API:
 
-1. **Hyperparameter lookup is possible at benchmark detail level.** Active benchmark IDs are available from a block requested with `include_data=true`. A benchmark detail response contains its precommit hyperparameters, compute type, fuel budget, and bundle qualities. Build an indexed cache to locate the best reference; do not repeatedly scan every benchmark for each member request. See [the block endpoint](https://mainnet-api.tig.foundation/get-block?include_data=true) and [the inspected benchmark response](https://mainnet-api.tig.foundation/get-benchmark-data?benchmark_id=84537c233538846c709dccb663c080ab).
-2. **Track summaries are insufficient by themselves.** The inspected track feed contained algorithm IDs, counts, and average qualities, without the originating benchmark IDs or hyperparameters. See [the inspected track snapshot](https://mainnet-api.tig.foundation/get-tracks-data?challenge_id=c001&block_id=2e9182fb93fbe78c08240201361e967a).
-3. **Aggregate qualifier counts support the approved accounting approach.** OPoW and algorithm data expose aggregate qualifier counts. The inspected protocol selection code includes cutoff limits and randomized ties. Under resolved decision D4, the pool shares qualifying credit equally at tied cutoffs instead of requiring the actual winning-bundle identities. Verify complete eligible bundle data and matching aggregate totals before awarding credit. See [the protocol qualifier selection](https://github.com/tig-foundation/tig-monorepo/blob/main/tig-protocol/src/contracts/opow.rs).
-4. **Capture block history in the pool.** The documented `/get-block` endpoint returns the latest block. An earlier attempt to pass historical block `234576301653877bffe4f4ff2a776f6a` returned height 1350875 instead, consistent with historical lookup not being a documented parameter. This does not prevent recording every block as it arrives. Use the pool's durable observations as the normal historical source; investigate external block recovery only for gaps that the pool's collectors did not capture. See [the API schema](https://swagger.tig.foundation/) and [the endpoint previously tested](https://mainnet-api.tig.foundation/get-block?block_id=234576301653877bffe4f4ff2a776f6a&include_data=true).
-5. **Deployed responses and schemas differ.** For example, the inspected proof response included `block_active`, while the downloaded schema's proof-details definition omitted it. Pin integration fixtures to the chosen deployment and test actual response shapes.
-6. **Public reports and arbitration outcomes are available.** The [TIG Benchmark Explorer](https://reports.tig.foundation/) uses public JSON routes for reports, benchmark details, and round emissions. Its [round 129 report response](https://reports.tig.foundation/api/reports?round=129) returned 16 reports and 16 linked arbitration decisions, with `nonreproducible` results. Reports identify the benchmark, nonce, benchmarker, and round; arbitration entries identify the report, result, and confirmation block. Round 130 also returned populated report/arbitration arrays. These are concrete integration examples, not hypothetical data dependencies. The documented protocol endpoint `/get-reports?round=...` likewise specifies both `reports` and `arbitrations` arrays. Prefer the documented protocol interface for production and use the explorer as a reference and cross-check; verify any explorer-route dependency before relying on it operationally.
-7. **Round earnings are also exposed publicly.** The explorer's [round 132 emissions response](https://reports.tig.foundation/api/round-emissions?round=132) contained per-benchmarker totals, coinbase allocations, shared amounts, and penalty fields. Reconcile those fields with actual receipts under the agreed settlement policy. A lookup of an older reported benchmark returned null detail objects, reinforcing the need to preserve the pool's own ownership, precommit, and proof records while available.
+1. **Hyperparameter lookup is possible at benchmark detail level.** Active benchmark IDs are available from a block requested with `include_data=true`. A benchmark detail response contains its precommit hyperparameters, compute type, fuel budget, and bundle qualities. Build an indexed cache to locate the best reference; do not repeatedly scan every benchmark for each member request. See [the block endpoint](https://mainnet-api.tig.foundation/get-block?include_data=true) and [a benchmark response](https://mainnet-api.tig.foundation/get-benchmark-data?benchmark_id=84537c233538846c709dccb663c080ab).
+2. **Track summaries are insufficient by themselves.** The track feed contains algorithm IDs, counts, and average qualities, without the originating benchmark IDs or hyperparameters. See [a track snapshot](https://mainnet-api.tig.foundation/get-tracks-data?challenge_id=c001&block_id=2e9182fb93fbe78c08240201361e967a).
+3. **Aggregate qualifier counts support the credit rule.** OPoW and algorithm data expose aggregate qualifier counts. The protocol selection code includes cutoff limits and randomized ties. Under D4, the pool shares qualifying credit equally at tied cutoffs instead of requiring the actual winning-bundle identities. Verify complete eligible bundle data and matching aggregate totals before awarding credit. See [the protocol qualifier selection](https://github.com/tig-foundation/tig-monorepo/blob/main/tig-protocol/src/contracts/opow.rs).
+4. **Capture block history in the pool.** The documented `/get-block` endpoint returns the latest block. Passing a historical block ID returns the latest block too, since historical lookup is not a documented parameter. This does not prevent recording every block as it arrives. Use the pool's durable observations as the normal historical source; investigate external block recovery only for gaps that the pool's collectors did not capture. See [the API schema](https://swagger.tig.foundation/).
+5. **Deployed responses and schemas differ.** For example, a proof response includes `block_active`, while the published schema's proof-details definition omits it. Pin integration fixtures to the chosen deployment and test actual response shapes.
+6. **Public reports and arbitration outcomes are available.** The [TIG Benchmark Explorer](https://reports.tig.foundation/) uses public JSON routes for reports, benchmark details, and round emissions. Its [report route](https://reports.tig.foundation/api/reports?round=129) returns reports and their linked arbitration decisions. Reports identify the benchmark, nonce, benchmarker, and round; arbitration entries identify the report, result, and confirmation block. The documented protocol endpoint `/get-reports?round=...` likewise specifies both `reports` and `arbitrations` arrays. Prefer the documented protocol interface for production and use the explorer as a reference and cross-check; verify any explorer-route dependency before relying on it operationally.
+7. **Round earnings are also exposed publicly.** The explorer's [round emissions route](https://reports.tig.foundation/api/round-emissions?round=132) contains per-benchmarker totals, coinbase allocations, shared amounts, and penalty fields. Reconcile those fields with actual receipts under the settlement policy. Detail lookups for older benchmarks return null objects, so the pool preserves its own ownership, precommit, and proof records while available.
 
-The local TIG source at `/root/tig-monorepo`, revision `84a5787`, was used as supporting evidence. It is not an implementation dependency of these two repositories. The deployed protocol and captured responses must establish the final adapter contract.
-
-Stage 0 should test the adapter against these public responses and establish the definitive signals for solution-verification failure, activation, expiry, each arbitration result, round earnings after penalties, and actual reward receipt. The agreed settlement boundary remains the end of X+2, when arbitrations for X are complete. Query and persist the resulting public outcomes, then join them to the pool's stored benchmark and member ownership. Verify how protocol report-round fields relate to benchmark creation at a round boundary; preserve both identities rather than assuming they are interchangeable.
+The deployed protocol and captured responses establish the adapter contract: the definitive signals for solution-verification failure, activation, expiry, each arbitration result, round earnings after penalties, and actual reward receipt. The settlement boundary is the end of X+2, when arbitrations for X are complete. The pool persists the public outcomes and joins them to its stored benchmark and member ownership, preserving both the creation and the reporting round identity rather than assuming they are interchangeable. [PROTOCOL_VALIDATION.md](PROTOCOL_VALIDATION.md) describes the probe that checks these inputs.
 
 ## 5. Target architecture and code ownership
 
-Keep the current deployment stack, with a new pool core in the pool-manager package. Use PostgreSQL as the durable authority. Keep HTTP handling, protocol observation, and background work in separate processes so a slow API request or payout calculation cannot stop benchmark progress.
-
-Implementation paths below refer to the corresponding files inside the new forks. Links to existing source files document the inspected baseline.
+The pool core is the `pool_manager.pool_v2` package, with PostgreSQL as the durable authority. Keep HTTP handling, protocol observation, and background work in separate processes so a slow API request or payout calculation cannot stop benchmark progress.
 
 ```mermaid
 flowchart LR
@@ -162,21 +130,21 @@ flowchart LR
     Network --> Chain
 ```
 
-Suggested modules under `pool_manager/pool_v2/`:
+The main modules under `pool_manager/pool_v2/`:
 
 | Module | Responsibility |
 |---|---|
-| `members.py`, `auth.py` | Member identity, wallet verification, execution tokens, resource declarations, and operator-only collateral multiplier changes with an audit history. |
-| `ledger.py` | The only entry point for balance changes and reservations. |
-| `deposits.py`, `withdrawals.py` | Incoming-fund attribution and the operator-reviewed withdrawal lifecycle. |
-| `selection.py` | Pure work-selection decisions over one complete snapshot. |
-| `benchmarks.py` | Ownership, two-slot limit, collateral links, and execution transitions. |
-| `tig_client.py`, `submission_worker.py` | Versioned TIG requests, durable submission queue, response reconciliation. |
-| `block_observer.py`, `qualifiers.py` | Continuous live collection, the pool's own block archive, gap detection/recovery, and member credit evidence. |
-| `arbitration.py`, `settlement.py` | Final collateral outcomes and round reward allocation. |
-| `repositories.py`, `models.py` | Database boundaries, transactions, and validated API models. |
+| `members.py`, `auth.py` | Member identity, wallet verification, execution tokens and operator-only collateral multiplier changes with an audit history. |
+| `ledger.py`, `money.py` | The only entry point for balance changes and reservations; integer token arithmetic. |
+| `deposits.py`, `withdrawals.py`, `custody.py` | Incoming-fund attribution, the operator-reviewed withdrawal lifecycle and custody reconciliation. |
+| `selection.py`, `references.py` | Pure work-selection decisions over one complete snapshot and the selection references they use. |
+| `benchmarks.py`, `work_requests.py`, `member_protocol.py` | Ownership, the two-slot limit, collateral links, execution transitions and the member API routes. |
+| `tig_transport.py`, `submissions.py`, `coordinator.py` | Versioned TIG requests, the durable submission queue and response reconciliation. |
+| `block_observer.py`, `observation.py`, `qualifiers.py` | Continuous live collection, the pool's own block archive, gap detection and member credit evidence. |
+| `report_observer.py`, `reports.py`, `settlement.py` | Final collateral outcomes and round reward allocation. |
+| `database.py`, `api.py`, `service.py` | Migrations and transactions, the FastAPI application and the service factory. |
 
-These names are proposed destinations, not existing files. Keep financial calculations and selection functions independent of HTTP clients and background loops so they can be tested directly.
+Keep financial calculations and selection functions independent of HTTP clients and background loops so they can be tested directly.
 
 Run block collection independently of the member API and benchmark scheduler,
 so their restarts or pauses do not interrupt accounting history. Validate the
@@ -186,8 +154,6 @@ failure domain. Back up captured data; a backup cannot recreate an unobserved
 block. Fetch final reports for unresolved obligations at their deadline.
 
 Only the coordinator creates benchmarks; only the ledger posts money movements; only the settlement worker finalizes round allocations. Background tasks use durable records with leases and unique operation IDs. Recover expired task leases after crashes without repeating completed financial actions. Expiry of a worker lease does not prove that an external submission or transfer was never sent; fence stale workers and reconcile uncertain effects before another worker submits or releases funds.
-
-The new deployment must not start the old master scheduler or its automatic batch reassignment loops. Extract useful TIG payload and verification code into the new adapter. Disable the old autopilot, pre-seeding scheduler, effort payouts, and AI-driven configuration paths for this deployment. The old source can remain available for reference without being a second writer of new-system state.
 
 ## 6. Benchmark request, selection, and completion
 
@@ -199,14 +165,14 @@ For a work request, use one complete TIG snapshot at block B:
 2. Restrict candidates to active challenges supported by that offer and compute type.
 3. Sum the pool's current qualifying bundles across tracks in each candidate challenge. Choose the smallest total; break ties uniformly at random. Record counts, candidates, and the selected result.
 4. Within that challenge, select the active, unbanned, executable algorithm with maximum current network adoption. Compare the protocol value without floating-point conversion.
-5. For every required active track, find that algorithm's highest-scoring currently active bundle, then copy its originating benchmark's hyperparameters. Record the reference benchmark and bundle, score, and copied settings. If the complete snapshot establishes that no reference bundle exists for that algorithm and track, set `hyperparameters` to JSON `null` under resolved decision D3 and record the default-selection reason. Continue with the selected algorithm and challenge, retaining all required tracks. An incomplete snapshot must be recovered before selection proceeds.
+5. For every required active track, find that algorithm's highest-scoring currently active bundle, then copy its originating benchmark's hyperparameters. Record the reference benchmark and bundle, score, and copied settings. If the complete snapshot establishes that no reference bundle exists for that algorithm and track, set `hyperparameters` to JSON `null` under D3 and record the default-selection reason. Continue with the selected algorithm and challenge, retaining all required tracks. An incomplete snapshot must be recovered before selection proceeds.
 6. Set each track's bundle count to its applicable minimum. Set and record the fuel budget. Supply all required track settings; TIG determines which track the benchmark receives.
 7. Compute base collateral as 10 TIG times the maximum proposed track bundle count, then multiply by the member's current collateral multiplier and round up to the smallest token unit. Recheck the multiplier inside the reservation transaction. Do not reduce the reservation after TIG chooses a smaller track.
 8. Check the member's two-slot limit and available collateral funds, plus the pool's own submission capacity, operator funds for submission costs, and upstream constraints. Account for costs already committed to pending submissions. Return an explicit unavailable or pending state when a requirement is unmet; never substitute member funds for operator operating funds.
 
 Cache the network's active benchmark references in the observer, indexed by algorithm and track. Fetch newly observed benchmark details once, retire references when they are no longer active, and retain the evidence used for each selection. Respect TIG request limits and prioritize existing proof deadlines over creating new work.
 
-Do not introduce extra weighting by CPU time, hardware size, algorithm preference, or work already in flight. Such weighting would change the agreed rule. Use a simple documented request queue when the pool cannot submit immediately. Give each waiting compute offer a short, server-configured expiry, shown to the client and refreshed while the member still offers that capacity. Recheck it immediately before submission; do not assign new work hours after an expired offer. Cancellation or expiry before any submission releases a proven-unsent reservation. Once submission may have happened, reconcile it before cancelling or refunding.
+Do not introduce extra weighting by CPU time, hardware size, algorithm preference, or work already in flight. Such weighting would change the rule. Use a simple documented request queue when the pool cannot submit immediately. Give each waiting compute offer a short, server-configured expiry, shown to the client and refreshed while the member still offers that capacity. Recheck it immediately before submission; do not assign new work hours after an expired offer. Cancellation or expiry before any submission releases a proven-unsent reservation. Once submission may have happened, reconcile it before cancelling or refunding.
 
 ### Atomic reservation and submission
 
@@ -215,7 +181,7 @@ Do not introduce extra weighting by CPU time, hardware size, algorithm preferenc
 3. Send the precommit outside that transaction through a durable submission worker. Save the exact payload and returned benchmark ID.
 4. On explicit rejection, release the member's collateral and slot exactly once, reconcile any actual operator charge, and release unused operator fee capacity. On acceptance, bind the benchmark ID permanently to the member and atomically publish the complete assignment through the API with its publication event, initially awaiting handover confirmation. Record the member client's acknowledgement separately before marking handover complete. Reconcile operator fee capacity against the actual charge without changing member collateral.
 5. On timeout, lost response, or ambiguous server error, keep the reservations and reconcile against TIG. Never assume that a failed HTTP exchange means the precommit was rejected.
-6. If TIG lacks an idempotency facility, serialize indistinguishable precommit attempts and prevent another equivalent attempt while one outcome is unknown. Phase 0 must prove how an accepted benchmark can be matched back to its intent after a lost response.
+6. If TIG lacks an idempotency facility, serialize indistinguishable precommit attempts and prevent another equivalent attempt while one outcome is unknown. An accepted benchmark must be matched back to its intent after a lost response; see [submission recovery](SUBMISSION_RECOVERY.md).
 7. If the selection block becomes stale, replace an intent only after proving it has never been sent. Cancel that intent and release its reservation, then rebuild and revalidate the selection and create a new intent and reservation using the current multiplier. Link the replacement to its predecessor and update funds and slots atomically; do not edit the original reservation's amount or multiplier. A submitted or uncertain intent must be reconciled first. Do not merely change `block_id` in the outgoing payload.
 
 No other member may receive that benchmark, including after disconnects or local recovery. A member can reconnect and retrieve their existing assignments using the same stable member identity. Retries and recovery of the same intent retain its recorded multiplier and collateral; a later operator change cannot reprice it.
@@ -262,7 +228,7 @@ Validate ownership for every endpoint. Validate payload size and expected nonce 
 
 The client first saves the complete assignment locally, then acknowledges its benchmark ID and immutable payload digest using the member's execution credentials. The pool checks ownership, payload identity, and that the benchmark remains eligible to start, then commits the acknowledgement and handover timestamp atomically before responding. Reject a first acknowledgement after definitive expiry; a retry of an already committed acknowledgement returns the original confirmation. The client starts execution only after receiving or recovering that confirmation. Lost delivery responses do not establish handover; lost acknowledgement responses require retry or status reconciliation. Never infer non-delivery solely from an HTTP error. Accept results and proofs only for a benchmark with recorded handover, so execution cannot bypass this boundary.
 
-Publish the API contract and a single-machine reference runner by adapting useful parts of the original batch worker. It must demonstrate the full benchmark/root/proof lifecycle and recovery after restart. Members can replace it or distribute the work internally. Building a multi-machine scheduler for them is not part of the plan.
+The API contract is published with a single-machine reference runner that demonstrates the full benchmark/root/proof lifecycle and recovery after restart. Members can replace it or distribute the work internally; the pool does not schedule across a member's machines for them.
 
 Document the [member master contract](MEMBER_MASTER.md), including
 aggregate compatible capacity, confirmed handover, full nonce aggregation,
@@ -271,13 +237,13 @@ failures. The pool authenticates the master as the member and applies the shared
 two-slot limit across all of that member's pool-facing clients. Machine count
 and internal job assignment do not alter collateral or reward accounting.
 
-Members must retain required solution artifacts through final collateral settlement and pending evidence requests. The current fixed 14-day archive policy cannot be the new default for unresolved benchmarks.
+Members must retain required solution artifacts through final collateral settlement and pending evidence requests; a fixed archive window is not acceptable for unresolved benchmarks.
 
 ## 7. Member funds, collateral, and custody
 
 ### Per-member collateral multipliers
 
-The operator can edit a member's `collateral_multiplier` through the operator interface and an operator-authenticated endpoint, proposed as `PATCH /api/v2/admin/members/{id}/collateral-multiplier`. Members and execution tokens cannot change this field. Validate it on both the API and database boundaries as a finite exact decimal in [0, 1]; reject out-of-range or invalid values rather than clamping them. Default it to 1. Record each change with the member, old and new values, revision, operator identity, timestamp, and optional reason.
+The operator can edit a member's `collateral_multiplier` through the operator screen and its operator-authenticated endpoint. Members and execution tokens cannot change this field. Validate it on both the API and database boundaries as a finite exact decimal in [0, 1]; reject out-of-range or invalid values rather than clamping them. Default it to 1. Record each change with the member, old and new values, revision, operator identity, timestamp, and optional reason.
 
 Calculate and persist collateral in integer token units:
 
@@ -319,7 +285,7 @@ Examples of movements:
 
 Member balance changes, withdrawal reservations, benchmark reservations, and operator multiplier changes lock the same member account within their transaction. Concurrent requests cannot spend the same funds twice or reserve against a stale multiplier revision. Changing the multiplier itself creates an audit event, not a money movement. A member can have collateral for many completed benchmarks even while using fewer than two current execution slots.
 
-Forfeiture is an internal transfer of already held funds. It is not a new wallet deposit. TIG penalties reflected in final net earnings must not be subtracted again during settlement. Record submission costs and withdrawal transaction fees as operator expenses under resolved D1, including actual charges for failed attempts. If an operating charge is withheld from reward receipts, reimburse that charge from operator funds to the affected round pot before settlement. Record it as reimbursement of an operator expense, not additional TIG reward income, so members do not bear the cost through a smaller pot.
+Forfeiture is an internal transfer of already held funds. It is not a new wallet deposit. TIG penalties reflected in final net earnings must not be subtracted again during settlement. Record submission costs and withdrawal transaction fees as operator expenses under D1, including actual charges for failed attempts. If an operating charge is withheld from reward receipts, reimburse that charge from operator funds to the affected round pot before settlement. Record it as reimbursement of an operator expense, not additional TIG reward income, so members do not bear the cost through a smaller pot.
 
 Reconcile the wallet at the same confirmation boundary used by the transfer observer against all member liabilities, round pots, operator funds, and unattributed receipts. Keep estimated TIG earnings outside those spendable accounts. Check operator operating balances separately from member balances, including any native asset needed for network fees. Insufficient operator funds prevent the affected submission or withdrawal transfer until replenished; member deposits, collateral, and reward allocations cannot cover the shortfall.
 
@@ -358,7 +324,7 @@ total_credit(X)   = sum of credit(member, X) over all members
 
 Counts are equally weighted across challenges and compute families. Do not multiply credit by the block's reward, a challenge multiplier, a member's compute time, or the benchmark's submission fee. Credit belongs to the round containing the counted block; collateral belongs to the benchmark's creation round. A benchmark crossing a round boundary therefore needs both identities preserved.
 
-Implement the approved D4 rule: use authoritative pool/algorithm/track qualifier totals and complete eligible bundle evidence; give full credit above the boundary and divide remaining credit equally among tied eligible bundles at that boundary. Preserve fractions exactly and reconcile to every authoritative aggregate. Validate the grouping, eligibility, and ranking against protocol behavior; reproducing TIG's random choice of tied winners is not required. Version this accounting rule so replay produces the same member credits.
+Implement the D4 rule: use authoritative pool/algorithm/track qualifier totals and complete eligible bundle evidence; give full credit above the boundary and divide remaining credit equally among tied eligible bundles at that boundary. Preserve fractions exactly and reconcile to every authoritative aggregate. Validate the grouping, eligibility, and ranking against protocol behavior; reproducing TIG's random choice of tied winners is not required. Version this accounting rule so replay produces the same member credits.
 
 Apply the equal-sharing rule within the same pool, algorithm, track, and block. It requires the complete eligible member-owned bundle set, their scores, and the authoritative qualifying count for that group. Rank the bundles, credit the unambiguous higher-scoring portion, and share only the remaining qualifying places at the tied boundary. Missing source-benchmark ownership or missing candidate data is a gap, not a tie to average away.
 
@@ -401,9 +367,9 @@ Set `cost_reimbursement(X)` to zero when operating costs were paid separately. I
 
 Example: 1,000 TIG in net round earnings plus 200 TIG in forfeitures produces a 1,200 TIG pot. The operator receives 60 TIG. Members with 40% and 60% of cumulative credit receive 456 and 684 TIG respectively. Submission and withdrawal costs come from the operator's 60 TIG or other operator funds; they do not reduce those member allocations. Returning successful collateral is a separate movement and does not attract the fee.
 
-Under resolved D2, a round with zero total member qualifying credit allocates its entire final pot to the operator, including forfeitures. For example, a finalized 200 TIG pot consisting only of forfeited collateral goes entirely to operator funds. Record this settlement reason and transfer the pot once, without a separate 5% fee transfer or carry-forward. The same end-of-X+2, final-outcome, complete-block-coverage, and funding requirements apply. Missing data cannot trigger this branch; hold settlement until it is recovered. A zero-value pot simply records a completed settlement without moving funds.
+Under D2, a round with zero total member qualifying credit allocates its entire final pot to the operator, including forfeitures. For example, a finalized 200 TIG pot consisting only of forfeited collateral goes entirely to operator funds. Record this settlement reason and transfer the pot once, without a separate 5% fee transfer or carry-forward. The same end-of-X+2, final-outcome, complete-block-coverage, and funding requirements apply. Missing data cannot trigger this branch; hold settlement until it is recovered. A zero-value pot simply records a completed settlement without moving funds.
 
-Separate an inconclusive final arbitration from an unavailable result. Under the agreed rule requiring an upheld report, a final `inconclusive` or `reproducible` result does not trigger forfeiture; a final `nonreproducible` result does. Confirm this adapter mapping against the deployed protocol. If a benchmark was active, the deadline has passed, and every report is final with none upheld, release its collateral. A missing, pending, unknown, or unreadable result remains unresolved and keeps the hold in place. One upheld report is enough to forfeit the reservation even if other reports were dismissed. The current result variants are defined in [TIG's arbitration types](https://github.com/tig-foundation/tig-monorepo/blob/main/tig-structs/src/core.rs).
+Separate an inconclusive final arbitration from an unavailable result. Under the rule requiring an upheld report, a final `inconclusive` or `reproducible` result does not trigger forfeiture; a final `nonreproducible` result does. Confirm this adapter mapping against the deployed protocol. If a benchmark was active, the deadline has passed, and every report is final with none upheld, release its collateral. A missing, pending, unknown, or unreadable result remains unresolved and keeps the hold in place. One upheld report is enough to forfeit the reservation even if other reports were dismissed. The current result variants are defined in [TIG's arbitration types](https://github.com/tig-foundation/tig-monorepo/blob/main/tig-structs/src/core.rs).
 
 Collateral due for return, including under D6, can be released after the required deadline and its own final outcome and handover status are known, even if reward settlement is delayed by a missing credit snapshot or an unreceived reward payment. A gap in reward-credit data alone does not extend an otherwise releasable collateral hold. Reward estimates remain unspendable until the funded round allocation is posted.
 
@@ -426,7 +392,7 @@ Use ordered, explicit database migrations rather than creating or altering finan
 | Token transfers and deposits | Chain identity, token, transaction and log identity, finality state, member attribution; each credited once. |
 | Withdrawals and payment attempts | Reserved amount, frozen destination and source pool wallet, review trail, potentially-sent status, uniquely linked external transfer events, last successful payment time. |
 | Block observations and gaps | Block identity/height/round/predecessor, raw observation references, collector identity, complete snapshot version, latest-seen and contiguous-complete cursors, coverage state, and recovery provenance. |
-| Qualifying credit | Block, benchmark/member, attribution evidence and rule version; exact fractional fields for the approved equal-sharing rule. |
+| Qualifying credit | Block, benchmark/member, attribution evidence and rule version; exact fractional fields for the equal-sharing rule. |
 | Reports and arbitrations | Report ID, benchmark, nonce, source round, result, observed finality, evidence. |
 | Round settlements | X, coverage status, collateral outcomes, net receipts, credit totals, allocation rule, total operator allocation, allocation hash, posting ID; exactly one final allocation. Distinguish the normal 5% fee from a whole-pot allocation under D2. |
 
@@ -447,21 +413,20 @@ Core invariants:
 - Submission costs and withdrawal transaction fees debit operator funds only; the full requested withdrawal amount reaches the member.
 - Historical credit, benchmark ownership, journal entries, and settlement inputs survive operational cleanup.
 
-Keep financial records and settlement evidence durable, with tested backup and restoration. Large execution artifacts may have a separate retention policy, but unresolved benchmarks and reports must remain recoverable. Do not make the current 14-day cleanup responsible for the new records.
+Keep financial records and settlement evidence durable, with tested backup and restoration. Large execution artifacts may have a separate retention policy, but unresolved benchmarks and reports must remain recoverable; see [evidence retention](EVIDENCE_RETENTION.md).
 
 ## 10. Validation and acceptance scenarios
 
-Use ordinary unit tests for selection and allocation mathematics, real PostgreSQL integration tests for concurrency and accounting, recorded TIG/chain fixtures for adapters, and an accelerated multi-round end-to-end simulator. Tests that merely search source text or extract isolated functions are insufficient for the new financial path.
+Use ordinary unit tests for selection and allocation mathematics, real PostgreSQL integration tests for concurrency and accounting, recorded TIG/chain fixtures for adapters, and an accelerated multi-round end-to-end simulator. Tests that merely search source text or extract isolated functions are insufficient for the financial path.
 
 | Scenario | Required outcome |
 |---|---|
-| Fork workspace is prepared | Both forks retain upstream history and the recorded baseline; pushes and pull requests target the forks. |
-| Member installs the new worker from the pool's Join page | Installer selects the worker fork and the release commit paired with that pool; original installations remain intact. |
+| Member installs the worker from the pool's Join page | The installer selects the worker repository and the release commit paired with that pool; other installations remain intact. |
 | Installer finds a checkout belonging to an unexpected repository | Stop without resetting it or overwriting its configuration or data. |
-| New deployment starts or updates on a host with the original deployment | Services, containers, images, ports, and data remain separate; the original deployment is unaffected. |
-| Worker restarts or an upstream branch changes | Installed code remains pinned; only an explicit compatible fork release update changes it. |
+| Two installations share a host | Services, containers, images, ports, and data remain separate. |
+| Worker restarts or an upstream branch changes | Installed code remains pinned; only an explicit paired release update changes it. |
 | An outdated or incompatible worker requests work | Reject the protocol version before reserving funds or assigning a benchmark. |
-| Paired fork release is rebuilt and staged | Recorded commits and image references reproduce the tested server/client pair. |
+| Paired release is rebuilt and staged | Recorded commits and image references reproduce the tested server/client pair. |
 | CPU request while a GPU challenge has fewer qualifiers | Only compatible CPU challenges are considered. |
 | Several equal-minimum challenges | Uniform selection among the tied eligible set, with reproducible recorded evidence. |
 | Highest-adoption algorithm changes between blocks | New selection uses one complete current snapshot and records it. |
@@ -501,7 +466,7 @@ Use ordinary unit tests for selection and allocation mathematics, real PostgreSQ
 | Two upheld nonce reports on one benchmark | Forfeit the recorded reservation once without applying its multiplier again; no retroactive historical credit removal. |
 | Active benchmark has only final reproducible or inconclusive arbitration results | After the required deadline, release collateral if no other report is upheld or unresolved. |
 | Report result is missing, pending, or an unknown value | Preserve the hold and reconcile; do not confuse missing data with a final inconclusive result. |
-| Benchmark active across a round boundary | Credit follows each block's round; collateral follows the agreed creation/reporting round mapping. |
+| Benchmark active across a round boundary | Credit follows each block's round; collateral follows the creation/reporting round mapping. |
 | Round has earned credit and rewards but no newly created benchmarks | Settle that reward round normally; the set of creation rounds does not define which reward rounds exist. |
 | Equal-score qualifier boundary | Share qualifying credit equally among tied eligible bundles under D4, using exact fractions; totals reconcile without requiring exact winning-bundle identities. |
 | Member API or scheduler restarts | Independent collection continues saving every block needed for qualifying credit. |

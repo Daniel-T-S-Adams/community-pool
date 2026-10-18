@@ -100,7 +100,7 @@ optional, disabled-by-default raw-file copy; both choices are listed in
    full-network format, before database expansion, reports, custody archives
    and backups. This short sample is an estimate, not a sustained capacity
    guarantee; the pool-scoped capture format ([lean storage](LEAN_STORAGE.md))
-   writes less per block. A longer-running full-network deployment measured a
+   writes less per block. One full-network deployment measured a
    primary database of about 26 GiB, a block spool of about 21 GiB, and
    recovery bases plus WAL of about 88 GiB. Size retention and copy staging
    from measured growth.

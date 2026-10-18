@@ -1,9 +1,9 @@
 # Known limitations and roadmap
 
-This page is the single list of what the pool does not do yet, what has not
-been validated end to end, and which decisions every operator has to make.
-Other documents point here instead of carrying their own "remaining work"
-notes.
+This page is the single list of what the pool does not do yet, what has and
+has not been validated and the evidence behind that, and which decisions every
+operator has to make. Other documents point here instead of carrying their own
+validation records or "remaining work" notes.
 
 ## Not implemented
 
@@ -29,6 +29,11 @@ notes.
 | Verified-binary reuse | The coordinator records checked archives for reuse; the reuse path has not yet served a production assignment. |
 | Interruption during live compute | Worker restart and helper disconnect recovery passed rehearsals; interruption of a paid benchmark in flight has not been exercised in production. |
 | Funded takeover | Restoring the recovery host's backup and starting the application there has been rehearsed in isolation, not as a funded takeover with members connected. |
+| Member master with SSH helpers | A two-server rehearsal on ARM64 hosts, six local plus six SSH helper workers on the same pinned source and images, completed a 200-nonce knapsack assignment and three sampled proofs in about fifteen minutes through a deliberate helper disconnect, a master kill and a restart; every saved output was reused without recomputation. Paid mainnet benchmarks have since completed on a master with one helper. |
+| Restore rehearsal | A restore from a real primary backup replayed its post-backup transaction; the evidence audit verified every chunk digest and manifest reference of a raw evidence copy on the recovery host; a migration was applied and replayed against a restored funded pilot database with balances, collateral holds, pending withdrawals and journal history unchanged. None of these moved a token. |
+| Protocol inputs and credit arithmetic | Two consecutive mainnet blocks from round 135 are recorded in `tests/v2/fixtures` with every active benchmark covered; the validator reproduces exact equal-sharing credit from them and parses two rounds of public reports and arbitrations. These are recorded fixtures, not observations of a live deployment; see [PROTOCOL_VALIDATION.md](PROTOCOL_VALIDATION.md). |
+| Custody observation | Offline verification reproduces a recorded public token transfer and wallet balance change from archived Base RPC responses; see [CUSTODY_OBSERVER.md](CUSTODY_OBSERVER.md). |
+| Pilot resource limits | An offline Docker test showed CPU throttling and a container-local out-of-memory termination under the pilot slice; it submitted no TIG work and touched no collateral. |
 
 ## Decisions every operator makes
 

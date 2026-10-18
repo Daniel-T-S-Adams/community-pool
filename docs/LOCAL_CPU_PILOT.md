@@ -22,9 +22,8 @@ pilot needs a separate, bounded database.
 Worker startup checks host headroom, rejects GPU or parallel worker configuration,
 and requires explicit limits. The fixed service name prevents simultaneous member
 workers. Container recovery preserves both resource limits and saved evidence.
-Drained updates retain the configuration. An offline Docker test demonstrated
-CPU throttling and a container-local out-of-memory termination under these controls.
-It did not submit TIG work or exercise a member's collateral.
+Drained updates retain the configuration. The offline test of these limits is
+recorded in [ROADMAP.md](ROADMAP.md#validated-so-far-and-not-yet).
 
 Before a paid mainnet attempt, measure running time on the intended
 hardware and verify that the entire minimum benchmark fits TIG's lifetime,

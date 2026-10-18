@@ -98,9 +98,8 @@ The pool contract and [member connection guide](MEMBER_SETUP.md) are in place.
 The supplied installer is single-machine. Members implement their own
 master/helper connections and scheduling, or configure the reference worker's
 optional SSH mode. They can integrate through the existing API without using
-that installer. A real two-server rehearsal passed computation, restart
-recovery and combined API uploads. Deployment and new-work availability are
-separate from this architecture; the checks that remain open are listed in
+that installer. Deployment and new-work availability are separate from this
+architecture; what has been exercised and what remains open are listed in
 [ROADMAP.md](ROADMAP.md).
 
 ## Responsibilities
@@ -219,6 +218,5 @@ aggregation. The paired installer served from the Join page configures one
 machine by default; optional SSH helpers require member configuration.
 
 Tests combine helper outputs, recover missing work after restart and submit one
-complete result and sampled proofs. A real two-server CPU rehearsal passed
-complete results/proofs, helper disconnection and master-crash recovery.
-The checks that remain open are listed in [ROADMAP.md](ROADMAP.md).
+complete result and sampled proofs. What has been exercised on real hosts and
+what remains open are listed in [ROADMAP.md](ROADMAP.md).
