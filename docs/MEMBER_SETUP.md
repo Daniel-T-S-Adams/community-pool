@@ -5,7 +5,8 @@ is the software that connects to the pool, saves assignments and submits your
 combined results and proofs. You decide how it distributes computation to your
 other machines. The pool requires no helper-machine registration.
 
-The **Connect your master** page at `/join` gives the same connection steps.
+The **Connect your master** guide at `/join`, linked from the member account
+page, gives the same connection steps.
 The supplied reference installer configures one machine. You can implement a
 custom master using the member API described here, or configure the paired
 reference worker's optional SSH helper mode. See the

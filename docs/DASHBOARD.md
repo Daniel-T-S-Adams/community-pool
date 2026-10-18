@@ -6,7 +6,9 @@ Assets are local; no third-party scripts or analytics are required.
 The screens carry the Community Pool identity; the name, mark, colours and
 the rules for member-facing wording are in the [branding guide](BRANDING.md).
 
-The `/join` page is **Connect your master**. Its public guide covers account
+The `/join` address opens the member account with the **Connect your master**
+guide shown above it. The header lists only **Member account** and **Operator**;
+the account page links to the guide. The guide covers account
 setup, the deployment's API address,
 execution tokens, work requests and confirmed assignment handover, plus result
 and proof submission and troubleshooting. Links are visible before and after

@@ -272,5 +272,5 @@ $('pause-work').addEventListener('click',()=>run(async()=>{await api('operator/c
 for(const [id,change] of [['operator-newer',-50],['operator-older',50]])$(id).addEventListener('click',()=>run(async()=>{operatorOffset=Math.max(0,operatorOffset+change);await loadOperator();}));
 $('member-page').hidden=operatorPage;$('operator-page').hidden=!operatorPage;
 $('master-setup-guide').hidden=location.pathname!=='/join';
-for(const link of document.querySelectorAll('nav a'))if(new URL(link.href).pathname===location.pathname)link.setAttribute('aria-current','page');
+for(const link of document.querySelectorAll('nav a'))if(new URL(link.href).pathname===(operatorPage?'/operator':'/'))link.setAttribute('aria-current','page');
 await run(loadCapabilities);
