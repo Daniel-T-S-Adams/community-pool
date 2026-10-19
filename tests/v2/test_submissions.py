@@ -161,6 +161,76 @@ class SubmissionTests(DatabaseCase):
         self.assertEqual(self.balance()["collateral"],40*TIG)
         self.assertEqual(self.row("SELECT count(*) AS n FROM submission_responses")["n"],1)
 
+    def test_precommit_absent_from_a_complete_later_feed_is_released_as_never_received(self):
+        row,intent=self.queued()
+        submissions.begin(self.db,intent["id"],preflight=self.preflight())
+        evidence={"block_id":"block-13","height":13}
+        # Too early: TIG may still confirm a slow send in the next block or two.
+        self.assertIsNone(submissions.expire_unsent_precommit(self.db,intent["id"],[],height=12,lifespan=120,evidence=evidence))
+        # Too late: a received precommit could already have left the feed.
+        self.assertIsNone(submissions.expire_unsent_precommit(self.db,intent["id"],[],height=68,lifespan=120,evidence=evidence))
+        # Any new matching candidate, even an ambiguous pair, keeps it uncertain.
+        self.assertIsNone(submissions.expire_unsent_precommit(self.db,intent["id"],[self.precommit(row),self.precommit(row,"c"*32)],height=13,lifespan=120,evidence=evidence))
+        self.assertEqual(self.row("SELECT state FROM reservations WHERE id=%s",(row["id"],))["state"],"uncertain")
+        self.assertEqual(self.balance()["collateral"],40*TIG)
+        unrelated=self.precommit(row,"d"*32);unrelated["settings"]["algorithm_id"]="other"
+        released=submissions.expire_unsent_precommit(self.db,intent["id"],[unrelated],height=13,lifespan=120,evidence=evidence)
+        self.assertEqual((released["source"],released["definitive_no_precommit"],released["height"]),("tig-unsent-precommit-v1",True,13))
+        saved=self.row("SELECT state,slot_held,fee_actual,collateral_outcome FROM reservations WHERE id=%s",(row["id"],))
+        self.assertEqual((saved["state"],saved["slot_held"],int(saved["fee_actual"]),saved["collateral_outcome"]),("rejected",False,0,"returned"))
+        self.assertEqual(self.row("SELECT state FROM protocol_outbox WHERE id=%s",(intent["id"],))["state"],"rejected")
+        self.assertEqual(self.balance()["collateral"],0)
+        self.assertEqual(self.balance()["slots"],0)
+        request=self.row("SELECT id FROM work_requests WHERE reservation_id=%s",(row["id"],))
+        self.assertEqual(work_requests.get(self.db,request["id"],self.member)["state"],"rejected")
+        with self.assertRaises(Conflict):
+            submissions.expire_unsent_precommit(self.db,intent["id"],[],height=13,lifespan=120,evidence=evidence)
+
+    def test_reconciliation_releases_an_unsent_precommit_after_five_complete_blocks(self):
+        row,intent=self.queued()
+        submissions.begin(self.db,intent["id"],preflight=self.preflight())
+        for height in (12,13):
+            value=observation(height)
+            for anchor in ("start","end"):
+                value[anchor]["block"]["config"]["challenges"]={"c1":{"lifespan_period":120}}
+            value["pool_player_id"]=self.player
+            value["pool_pending"]={"precommits":[],"benchmarks":[],"proofs":[],"frauds":[]}
+            recorded=BlockStore(self.db).record(value,collector="fixture")
+            self.assertTrue(recorded["complete"],recorded)
+            reconcile_block(self.db,value["start"]["block"]["id"],self.player)
+            self.assertEqual(self.row("SELECT state FROM reservations WHERE id=%s",(row["id"],))["state"],"uncertain" if height<13 else "rejected")
+        self.assertEqual(self.balance()["slots"],0)
+        self.assertEqual(self.balance()["collateral"],0)
+        outbox=self.row("SELECT state,evidence FROM protocol_outbox WHERE id=%s",(intent["id"],))
+        self.assertEqual((outbox["state"],outbox["evidence"]["height"],outbox["evidence"]["preflight_height"]),("rejected",13,8))
+
+    def empty_feed_block(self,height):
+        value=observation(height)
+        for anchor in ("start","end"):
+            value[anchor]["block"]["config"]["challenges"]={"c1":{"lifespan_period":120}}
+        value["pool_player_id"]=self.player
+        value["pool_pending"]={"precommits":[],"benchmarks":[],"proofs":[],"frauds":[]}
+        recorded=BlockStore(self.db).record(value,collector="fixture")
+        self.assertTrue(recorded["complete"],recorded)
+        return value["start"]["block"]["id"]
+
+    def test_reconciliation_past_the_window_reads_an_archived_block_inside_it(self):
+        row,intent=self.queued()
+        submissions.begin(self.db,intent["id"],preflight=self.preflight())
+        # Nothing inside the window was archived yet: a block past it proves nothing.
+        late=self.empty_feed_block(70)
+        reconcile_block(self.db,late,self.player)
+        self.assertEqual(self.row("SELECT state FROM reservations WHERE id=%s",(row["id"],))["state"],"uncertain")
+        # A complete block inside the window that the rule never saw live still settles it.
+        inside=self.empty_feed_block(20)
+        reconcile_block(self.db,late,self.player)
+        saved=self.row("SELECT state,slot_held FROM reservations WHERE id=%s",(row["id"],))
+        self.assertEqual((saved["state"],saved["slot_held"]),("rejected",False))
+        outbox=self.row("SELECT state,evidence FROM protocol_outbox WHERE id=%s",(intent["id"],))
+        self.assertEqual((outbox["state"],outbox["evidence"]["block_id"],outbox["evidence"]["height"],outbox["evidence"]["evaluated_at_height"]),
+                         ("rejected",inside,20,70))
+        self.assertEqual(self.balance()["collateral"],0)
+
     def test_indistinguishable_pending_precommit_blocks_another_member(self):
         first,intent=self.queued()
         submissions.begin(self.db,intent["id"],preflight=self.preflight())
