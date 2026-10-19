@@ -136,6 +136,8 @@ class DashboardBrowserTests(DatabaseCase):
         expect(page.locator('#member-content')).not_to_be_visible()
         expect(guide).to_contain_text(self.api_origin + '/api/v2')
         expect(guide).not_to_contain_text('__POOL_V2_API_ORIGIN__')
+        self.assertEqual(page.locator('nav a').all_inner_texts(), ['Member account', 'Operator'])
+        expect(page.locator('nav a[aria-current=page]')).to_have_text('Member account')
         guide.get_by_text('Pool connection and receiving a benchmark', exact=True).click()
         expect(guide).to_contain_text('X-InnoPool-Version: 2.0')
         expect(guide).to_contain_text('POST /api/v2/benchmarks/{benchmark_id}/acknowledge')

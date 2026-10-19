@@ -149,7 +149,8 @@ screen has no separate per-member suspend/ban control.
 3. Once deposits are enabled, the member sends TIG from their verified member
    wallet to the address and network shown under **Member funds**. The pool
    credits a verified, finalized direct-source deposit to that member.
-4. The member selects **Create execution token** and opens **Connect your master**.
+4. The member selects **Create execution token** and opens the **Connect your
+   master** guide linked from their account page.
    The guide shows the deployment's API address, required headers and the work
    request and confirmed-handover steps. They keep the token in their master.
 5. Their master offers compatible capacity, receives and acknowledges one whole
