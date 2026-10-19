@@ -25,7 +25,8 @@ A successful precommit response stores the returned benchmark ID immediately
 with its immutable reservation owner. Metadata fetches happen afterwards. If
 the response was lost, recovery searches for exactly one matching precommit
 that was absent from the captured baseline and is not already claimed by
-another reservation. Zero or multiple matches remain unresolved.
+another reservation. Multiple matches remain unresolved; zero matches resolve
+only through the never-received rule below.
 
 Publication waits for confirmed details, validates the chosen track, nonce
 count, random seed, exact fee and creation height against the saved block, and
@@ -89,8 +90,25 @@ held amount once into its creation round's pot. No qualifying credit is earned
 and submission fees remain the operator's expense. This rule does not expire
 an assignment that was never acknowledged or release funds early.
 
+### TIG never received a precommit
+
+A precommit send can time out without TIG recording anything. TIG confirms a
+received precommit in the following block and keeps it in the pool player's
+pending feed until the challenge lifetime ends, so absence from a complete
+later feed becomes definitive once enough blocks have passed. The coordinator
+applies `tig-unsent-precommit-v1` when a complete observed block is at least
+five blocks past the preflight head and inside the first half of the challenge
+lifetime recorded in that block, no positive identity was ever received, and
+the feed holds no new precommit matching the immutable settings. The intent is
+marked `rejected` and the reservation is released exactly like a definitive
+rejection with no fee charged: collateral and the fee commitment return, the
+slot frees, and the member's work request reports `rejected` so its worker
+offers again. One matching candidate recovers the identity instead and several
+keep the intent uncertain. Earlier and later blocks leave it untouched, and
+historical replay applies the same rule block by block.
+
 Pausing new work cancels unsent precommits and permits existing payload recovery.
-An uncertain operation is retained. Unused, unsent result/proof intents can be
+An uncertain operation is retained until that rule resolves it. Unused, unsent result/proof intents can be
 retired only after a definitive benchmark outcome. A service lease never
 reclassifies an external write as unsent.
 
@@ -104,6 +122,8 @@ entry point is:
 python3 tools/run_tig_v2.py --config /absolute/path/coordinator.json
 ```
 
+`submission_timeout_seconds` (default 20) bounds each TIG write; a longer value
+only reduces lost responses, because the send fence does not depend on it.
 The JSON file includes `tig_api_url`, `pool_player_id`, `public_origin` (the
 member API's HTTPS origin), `submissions_enabled` and `new_work_enabled`.
 Both boolean flags default to false. Enabling new work requires enabled

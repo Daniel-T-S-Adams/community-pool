@@ -266,6 +266,52 @@ def recover_precommit(database, identity, precommits, *, evidence):
         return benchmark_id
 
 
+# Complete blocks after the preflight head before a missing precommit counts
+# as never received. TIG confirms a received precommit in the next block.
+UNSENT_PRECOMMIT_MARGIN = 5
+
+
+def expire_unsent_precommit(database, identity, precommits, *, height, lifespan, evidence):
+    """Release a potentially sent precommit that TIG demonstrably never recorded.
+
+    TIG lists a confirmed precommit in the player's pending feed until the
+    challenge lifetime ends. A complete feed observed at least
+    UNSENT_PRECOMMIT_MARGIN blocks after the preflight head, and inside the
+    first half of that lifetime, that holds no new matching precommit
+    therefore proves the send never arrived. The reservation is released like
+    a definitive rejection with no fee charged. Any new candidate, even an
+    ambiguous one, keeps the intent uncertain; a recorded identity is never
+    replaced by absence.
+    """
+    if not isinstance(precommits, list) or not evidence:
+        raise ProtocolDataError("unsent precommit evidence requires observed protocol records")
+    height = _integer(height, "observed height", 1)
+    lifespan = _integer(lifespan, "challenge lifetime", 1)
+    with database.transaction() as cursor:
+        row, intent = _locked(cursor, identity)
+        if intent["kind"] != "precommit" or intent["state"] != "uncertain" or not intent["preflight"]:
+            raise Conflict("precommit is not awaiting identity reconciliation")
+        started = _integer(intent["preflight"]["height"], "preflight height", 1)
+        if not started + UNSENT_PRECOMMIT_MARGIN <= height < started + lifespan // 2:
+            return None
+        cursor.execute("SELECT 1 FROM precommit_receipts WHERE reservation_id=%s", (row["id"],))
+        if cursor.fetchone():
+            return None
+        excluded = set(intent["preflight"]["seen_benchmarks"])
+        cursor.execute("SELECT benchmark_id FROM precommit_receipts UNION SELECT benchmark_id FROM reservations WHERE benchmark_id IS NOT NULL")
+        excluded.update(item["benchmark_id"] for item in cursor.fetchall())
+        payload = json.loads(intent["payload_text"])
+        if any(isinstance(value, dict) and value.get("benchmark_id") not in excluded and matches(payload, value)
+               for value in precommits):
+            return None
+        evidence = {**evidence, "source": "tig-unsent-precommit-v1", "definitive_no_precommit": True,
+                    "preflight_height": started, "margin_blocks": UNSENT_PRECOMMIT_MARGIN,
+                    "lifespan_period": lifespan, "feed_precommits": len(precommits)}
+        benchmarks.release_unstarted(database, row["id"], rejected=True, evidence=evidence, _cursor=cursor)
+        cursor.execute("UPDATE protocol_outbox SET state='rejected',evidence=%s WHERE id=%s", (Json(evidence), identity))
+        return evidence
+
+
 def publish_assignment(database, reservation_id, precommit, *, evidence, artifact_origin=None):
     """Publish confirmed TIG details only after validating the immutable choice."""
     if artifact_origin:

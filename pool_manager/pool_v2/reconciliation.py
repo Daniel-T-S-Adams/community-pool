@@ -172,6 +172,22 @@ def _expire_rejected_results(database, row, observation, snapshot, submission_or
     return True
 
 
+def _release_unsent_precommit(database, intent_id, feed, observation, snapshot, evidence):
+    """A precommit still absent from a complete feed well after its send was never received."""
+    with database.transaction() as cursor:
+        cursor.execute("""SELECT r.payload FROM protocol_outbox o JOIN reservations r ON r.id=o.reservation_id
+            WHERE o.id=%s""", (intent_id,))
+        row = cursor.fetchone()
+    try:
+        challenge = row['payload']['settings']['challenge_id']
+        lifespan = _integer(observation['start']['block']['config']['challenges'][challenge]['lifespan_period'],
+                            'challenge lifetime', 1)
+    except (KeyError, TypeError, ValueError):
+        return None
+    return submissions.expire_unsent_precommit(database, intent_id, list(feed['precommits'].values()),
+                                               height=snapshot.height, lifespan=lifespan, evidence=evidence)
+
+
 def reconcile_block(database, block_id, player_id, *, artifact_origin=None, submission_origin=None):
     observation,snapshot = BlockStore(database).read(block_id)
     feed = player_feed(observation,player_id)
@@ -180,7 +196,8 @@ def reconcile_block(database, block_id, player_id, *, artifact_origin=None, subm
         cursor.execute("SELECT id FROM protocol_outbox WHERE kind='precommit' AND state='uncertain' ORDER BY created_at,id")
         uncertain = cursor.fetchall()
     for intent in uncertain:
-        submissions.recover_precommit(database,intent["id"],list(feed["precommits"].values()),evidence=evidence)
+        if submissions.recover_precommit(database,intent["id"],list(feed["precommits"].values()),evidence=evidence) is None:
+            _release_unsent_precommit(database,intent["id"],feed,observation,snapshot,evidence)
     with database.transaction() as cursor:
         cursor.execute("""SELECT r.id,p.benchmark_id FROM reservations r JOIN precommit_receipts p ON p.reservation_id=r.id
             WHERE r.state='uncertain' ORDER BY r.id""")
