@@ -259,6 +259,32 @@ class NetworkReferenceTests(DatabaseCase):
         payload, metadata = network_references.capture(FakeClient(self.data), WALLET)
         return network_references.record(self.db, payload, metadata)
 
+    def test_reference_capture_repeats_a_read_that_a_new_block_interrupted(self):
+        from pool_manager.pool_v2.protocol import BlockChangedDuringCapture
+
+        class Interrupted(FakeClient):
+            def __init__(self, data, changed_reads):
+                super().__init__(data)
+                self.changed_reads, self.end_reads = changed_reads, 0
+
+            def get(self, path, params=None):
+                value = super().get(path, params)
+                if path == "/get-block" and not (params or {}).get("include_data"):
+                    self.end_reads += 1
+                    if self.end_reads <= self.changed_reads:
+                        value["block"]["id"] = "next-block-" + str(self.end_reads)
+                return value
+
+        client = Interrupted(self.data, changed_reads=1)
+        payload, metadata = network_references.capture(client, WALLET)
+        self.assertEqual(payload["block"]["id"], self.data["start"]["block"]["id"])
+        self.assertEqual(client.end_reads, 2)
+        self.assertEqual(sum(1 for path, _ in client.paths if path == "/get-block"), 4)
+        always = Interrupted(self.data, changed_reads=10)
+        with self.assertRaises(BlockChangedDuringCapture):
+            network_references.capture(always, WALLET)
+        self.assertEqual(always.end_reads, 3)
+
     def test_references_are_recorded_once_and_loaded_with_identity_and_age_bound(self):
         first = self.refresh()
         self.assertTrue(first["new"])

@@ -90,8 +90,11 @@ image, or of a resource the deployment does not offer, cannot be ticked.
 
 `POST /api/v2/operator/controls/new-work` takes `paused`, `reason` and an
 `event_key`. The change is audited and idempotent. Replaying an old pause event
-does not undo a later resume. Migration 007 adds the control and immutable
-history.
+does not undo a later resume: a request whose key was already recorded returns
+the recorded event with `replayed: true` and applies nothing, so a tool that
+reuses a key must not assume the value is now in force. Use a fresh key for
+every intended change and check the capabilities route afterwards. Migration
+007 adds the control and immutable history.
 
 New collateral reservations and first precommit sends check the control under
 the shared protocol-budget lock. An already committed send can still finish;

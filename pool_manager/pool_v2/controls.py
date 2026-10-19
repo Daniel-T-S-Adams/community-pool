@@ -65,7 +65,7 @@ def set_offered_challenges(database, challenges, *, actor, reason, event_key, al
             recorded = {row['name'][6:]: row['after_value'] for row in replay}
             if recorded != planned or any((row['actor'], row['reason']) != (actor, reason) for row in replay):
                 raise Conflict('control event key was reused')
-            return {'offered': offered_challenges(database, cursor=cursor), 'events': []}
+            return {'offered': offered_challenges(database, cursor=cursor), 'events': [], 'replayed': True}
         events = []
         for challenge, value in planned.items():
             cursor.execute("""INSERT INTO runtime_controls(name,value) VALUES (%s,%s)
@@ -74,7 +74,7 @@ def set_offered_challenges(database, challenges, *, actor, reason, event_key, al
                 VALUES (%s,%s,%s,%s,%s,%s) RETURNING *""",
                 (event_key + ':' + challenge, 'offer:' + challenge, current.get(challenge, False), value, actor, reason))
             events.append(dict(cursor.fetchone()))
-        return {'offered': offered_challenges(database, cursor=cursor), 'events': events}
+        return {'offered': offered_challenges(database, cursor=cursor), 'events': events, 'replayed': False}
 
 
 def catalogue(database, *, manifest=None, offered_resources=('CPU',)):
@@ -123,10 +123,12 @@ def set_pause(database,value,*,actor,reason,event_key):
         if previous:
             if (previous['after_value'],previous['actor'],previous['reason'])!=(value,actor,reason):
                 raise Conflict('control event key was reused')
-            return dict(previous)
+            # A replayed key returns the recorded event and applies nothing: the
+            # current value may differ from after_value if later events changed it.
+            return {**dict(previous),'replayed':True}
         before=paused(database,cursor=cursor)
         cursor.execute("""INSERT INTO runtime_controls(name,value) VALUES ('new_work_paused',%s)
             ON CONFLICT (name) DO UPDATE SET value=excluded.value,updated_at=clock_timestamp()""",(value,))
         cursor.execute("""INSERT INTO runtime_control_events(event_key,name,before_value,after_value,actor,reason)
             VALUES (%s,'new_work_paused',%s,%s,%s,%s) RETURNING *""",(event_key,before,value,actor,reason))
-        return dict(cursor.fetchone())
+        return {**dict(cursor.fetchone()),'replayed':False}

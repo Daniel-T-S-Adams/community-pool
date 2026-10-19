@@ -97,13 +97,16 @@ class ApiTests(DatabaseCase):
         operator={'Authorization':'Bearer '+self.operator}
         self.assertEqual(self.client.post(path,json=body,headers=self.headers).status_code,403)
         self.assertEqual(self.client.post(path,json={**body,'paused':'true'},headers=operator).status_code,422)
-        self.assertEqual(self.client.post(path,json=body,headers=operator).status_code,200)
+        first=self.client.post(path,json=body,headers=operator)
+        self.assertEqual(first.status_code,200);self.assertFalse(first.json()['replayed'])
         capabilities=self.client.get('/api/v2/capabilities').json()
         self.assertTrue(capabilities['new_work_paused'])
         self.assertFalse(capabilities['work_enabled'])
         self.assertEqual(self.client.post(path,json={**body,'paused':False,'event_key':'resume'},headers=operator).status_code,200)
-        # Replaying the older event is idempotent; it must not undo the later resume.
-        self.assertEqual(self.client.post(path,json=body,headers=operator).status_code,200)
+        # Replaying the older event is idempotent; it must not undo the later resume,
+        # and the reply says so, because the current value no longer matches the event.
+        replay=self.client.post(path,json=body,headers=operator)
+        self.assertEqual(replay.status_code,200);self.assertTrue(replay.json()['replayed'])
         self.assertFalse(controls.paused(self.db))
         self.assertFalse(self.client.get('/api/v2/capabilities').json()['work_enabled'])
         self.assertEqual(self.row('SELECT count(*) AS n FROM runtime_control_events')['n'],2)
@@ -131,7 +134,9 @@ class ApiTests(DatabaseCase):
         self.assertEqual(result.json()['offered'],['c001'])
         self.assertEqual(client.get('/api/v2/capabilities').json()['offered_challenges'],['c001'])
         # Replaying the same event is idempotent; the same key with another list is refused.
-        self.assertEqual(client.post(path,json={'challenges':['c001'],'reason':'timed','event_key':'offer-1'},headers=operator).json()['offered'],['c001'])
+        replay=client.post(path,json={'challenges':['c001'],'reason':'timed','event_key':'offer-1'},headers=operator).json()
+        self.assertEqual((replay['offered'],replay['replayed']),(['c001'],True))
+        self.assertFalse(result.json()['replayed'])
         self.assertEqual(client.post(path,json={'challenges':[],'reason':'timed','event_key':'offer-1'},headers=operator).status_code,409)
         self.assertEqual(client.post(path,json={'challenges':[],'reason':'stop','event_key':'offer-2'},headers=operator).json()['offered'],[])
         self.assertEqual(client.get('/api/v2/capabilities').json()['offered_challenges'],[])

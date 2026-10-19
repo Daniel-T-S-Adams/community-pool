@@ -91,7 +91,9 @@ the whole network. The coordinator reads every active player's feed for one
 current block only when a member is waiting for work and the newest stored
 reference is older than `reference_max_age_seconds` (default 1800). It
 validates the whole network and keeps only the best bundle per algorithm and
-track, with its parameters, in `reference_captures`. Selection then uses that
+track, with its parameters, in `reference_captures`. Reading every feed takes
+several requests, so a new block can arrive part-way through; the read is then
+repeated, up to three times, before the coordinator's cycle is given up. Selection then uses that
 index: a reference from after the credited block, or older than the configured
 age, is refused, and the reservation records the reference capture's identity,
 block and digest beside the credited block. Nothing is read while new work is

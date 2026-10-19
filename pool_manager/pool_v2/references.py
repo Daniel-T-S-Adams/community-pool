@@ -19,16 +19,27 @@ from psycopg2.extras import Json
 from .block_observer import _semantic
 from .compact import metadata_summary
 from .observation import canonical_json, capture_snapshot
-from .protocol import Bundle, ProtocolDataError, _array, _integer, _object, _text, validate_snapshot
+from .protocol import BlockChangedDuringCapture, Bundle, ProtocolDataError, _array, _integer, _object, _text, validate_snapshot
 from .selection import ReferenceIndex, references
 
 FORMAT = "network-references-v1"
 
 
-def capture(client, pool_player_id, *, max_workers=4):
-    """Read and validate the whole network once; keep the best bundle per algorithm and track."""
-    observation = capture_snapshot(client, pool_player_id=pool_player_id, max_workers=max_workers)
-    snapshot = validate_snapshot(observation)
+def capture(client, pool_player_id, *, max_workers=4, attempts=3):
+    """Read and validate the whole network once; keep the best bundle per algorithm and track.
+
+    Reading every player's feed takes several requests, so a TIG block can arrive
+    part-way through. That read is then inconsistent and is repeated, at most
+    `attempts` times, instead of failing the caller's whole cycle.
+    """
+    for attempt in range(1, attempts + 1):
+        observation = capture_snapshot(client, pool_player_id=pool_player_id, max_workers=max_workers)
+        try:
+            snapshot = validate_snapshot(observation)
+            break
+        except BlockChangedDuringCapture:
+            if attempt == attempts:
+                raise
     index = references(snapshot)
     values = [{"bundle": asdict(bundle),
                "hyperparameters": snapshot.precommits[bundle.benchmark_id]["details"]["hyperparameters"]}
