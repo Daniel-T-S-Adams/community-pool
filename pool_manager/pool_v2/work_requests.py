@@ -5,7 +5,7 @@ import uuid
 
 from psycopg2.extras import Json
 
-from . import benchmarks, ledger, references as network_references
+from . import benchmarks, controls, ledger, references as network_references
 from .block_observer import BlockStore
 from .database import lock
 from .members import member_lock
@@ -126,8 +126,8 @@ def reserve_next(database, player_id, *, now, max_age=120, reference_max_age=180
         # Fence updates to the selected block/coverage while making the decision.
         lock(cursor, "observation-stream")
         lock(cursor, "operator:protocol-budget")
-        from .controls import blocked
-        if blocked(database,cursor=cursor):return None
+        if controls.blocked(database,cursor=cursor):return None
+        offered=controls.offered_challenges(database,cursor=cursor)
         cursor.execute("SELECT id FROM observed_blocks ORDER BY height DESC LIMIT 1")
         if cursor.fetchone()["id"] != block_id:
             raise ProtocolDataError("new block arrived before work reservation")
@@ -144,7 +144,7 @@ def reserve_next(database, player_id, *, now, max_age=120, reference_max_age=180
             try:
                 selection = choose(snapshot, observation["algorithms"]["binarys"], player_id=player_id,
                     resource=offer["resource"], compute_type=offer["compute_type"], now=now, max_age=max_age,
-                    reference_index=reference_index, reference_max_age=reference_max_age)
+                    reference_index=reference_index, reference_max_age=reference_max_age, offered_challenges=offered)
             except NoCompatibleWork:
                 continue
             # An unavailable member cannot prevent the next queued member from

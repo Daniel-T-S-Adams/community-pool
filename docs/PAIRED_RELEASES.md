@@ -59,7 +59,10 @@ are not established by this minimal API schema.
 The Join page lets members choose CPU on AMD64, CPU on ARM64, or GPU on AMD64,
 and concurrent nonce capacity. Only resources listed in the service
 configuration's `offered_resources` are shown and served; by default that is
-CPU only, until GPU execution has been validated end to end. It provides the checked download and commands
+CPU only, until GPU execution has been validated end to end. Within an offered
+resource, the operator's saved list of offered challenges decides which
+challenges are handed out; a challenge needs its runtime image pinned in this
+manifest before it can be offered. It provides the checked download and commands
 using a new `innopool-v2-member` directory. The command contains no execution
 token; the installer prompts privately for it. Hardware compatibility is
 checked before an installed worker can request work.
