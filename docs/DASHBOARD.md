@@ -67,6 +67,25 @@ addresses identify the member allocations displayed for review. Finalizing a
 benchmark's collateral still requires authoritative outcome and post-X+2
 arbitration evidence. The operator cannot bypass these checks from the screen.
 
+## Offered challenges
+
+`GET /api/v2/operator/challenges` lists every challenge the operator can
+decide about: those with a runtime image pinned in the served release and those
+present in the latest observed block, with their resource family, active track
+count and whether they are currently offered. `POST
+/api/v2/operator/controls/offered-challenges` takes `challenges`, `reason` and
+an `event_key` and records one audited control per challenge, named
+`offer:<id>`, under the protocol-budget lock that reservations also take.
+Replaying the same event is idempotent; the same key with another list is
+refused. Migration 028 widens the runtime control tables for these names.
+
+Until a list is saved the pool offers every active challenge of the offered
+resources. After that, selection skips unlisted challenges and records
+`offered_challenges` and `excluded_challenges` in the reservation evidence. The
+public capabilities route reports the saved list. The operator page shows the
+list as tick boxes grouped by resource; a challenge without a pinned runtime
+image, or of a resource the deployment does not offer, cannot be ticked.
+
 ## Pausing new work
 
 `POST /api/v2/operator/controls/new-work` takes `paused`, `reason` and an

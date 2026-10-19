@@ -43,6 +43,18 @@ class SubmissionTests(DatabaseCase):
         store = BlockStore(self.db)
         store.initialize(8); store.record(self.obs, collector="fixture")
 
+    def test_operator_offered_challenges_restrict_reservations(self):
+        now=self.obs["start"]["block"]["details"]["timestamp"]
+        work_requests.create(self.db,self.member,"restricted",resource="CPU",compute_type="aws_c7a",capacity={"workers":1},ttl_seconds=600)
+        controls.set_offered_challenges(self.db,["c2"],actor="operator",reason="GPU only",event_key="offer-gpu")
+        self.assertIsNone(work_requests.reserve_next(self.db,self.player,now=now))
+        self.assertEqual(self.row("SELECT state FROM work_requests WHERE request_key='restricted'")["state"],"queued")
+        controls.set_offered_challenges(self.db,["c1","c2"],actor="operator",reason="knapsack timed",event_key="offer-cpu")
+        row=work_requests.reserve_next(self.db,self.player,now=now)
+        self.assertEqual(row["selection"]["selected_challenge"],"c1")
+        self.assertEqual(row["selection"]["offered_challenges"],["c1","c2"])
+        self.assertEqual(row["selection"]["excluded_challenges"],[])
+
     def queued(self, key="first", member=None, ttl_seconds=60, legacy=False):
         work_requests.create(self.db, member or self.member, key, resource="CPU", compute_type="aws_c7a",
                              capacity={"workers":1}, ttl_seconds=ttl_seconds)

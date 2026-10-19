@@ -11,7 +11,9 @@ missing work-protocol version returns 426 before reserving funds. The pool's
 capabilities route reports `api_version`, `assignment_unit: whole-benchmark`,
 whether new work is enabled and `offered_resources`, the resources the operator
 has validated on this pool (`CPU` alone until GPU execution is validated); a
-work request for a resource that is not offered is refused with 409. Amounts exposed to clients use decimal strings
+work request for a resource that is not offered is refused with 409. It also
+reports `offered_challenges`: the challenge ids the operator hands out, or
+`null` while every active challenge of the offered resources is offered. Amounts exposed to clients use decimal strings
 of token base units, with 18 decimal places per TIG.
 
 ## Work request
