@@ -104,8 +104,10 @@ marked `rejected` and the reservation is released exactly like a definitive
 rejection with no fee charged: collateral and the fee commitment return, the
 slot frees, and the member's work request reports `rejected` so its worker
 offers again. One matching candidate recovers the identity instead and several
-keep the intent uncertain. Earlier and later blocks leave it untouched, and
-historical replay applies the same rule block by block.
+keep the intent uncertain. Earlier blocks leave it untouched. Once the current
+block is past the window, the newest archived complete block inside the window
+supplies the feed instead, so the outcome does not depend on when the
+coordinator runs; historical replay applies the same rule block by block.
 
 Pausing new work cancels unsent precommits and permits existing payload recovery.
 An uncertain operation is retained until that rule resolves it. Unused, unsent result/proof intents can be

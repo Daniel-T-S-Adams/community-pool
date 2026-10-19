@@ -172,18 +172,45 @@ def _expire_rejected_results(database, row, observation, snapshot, submission_or
     return True
 
 
-def _release_unsent_precommit(database, intent_id, feed, observation, snapshot, evidence):
-    """A precommit still absent from a complete feed well after its send was never received."""
+def _lifespan(observation, challenge):
+    return _integer(observation['start']['block']['config']['challenges'][challenge]['lifespan_period'],
+                    'challenge lifetime', 1)
+
+
+def _release_unsent_precommit(database, intent_id, player_id, feed, observation, snapshot, evidence):
+    """A precommit still absent from a complete feed well after its send was never received.
+
+    The current block supplies the feed while it lies inside the rule's window. Once it is
+    past the window, the newest archived complete block inside the window is read instead,
+    so the outcome does not depend on when the coordinator happens to run.
+    """
     with database.transaction() as cursor:
-        cursor.execute("""SELECT r.payload FROM protocol_outbox o JOIN reservations r ON r.id=o.reservation_id
+        cursor.execute("""SELECT r.payload,o.preflight FROM protocol_outbox o JOIN reservations r ON r.id=o.reservation_id
             WHERE o.id=%s""", (intent_id,))
         row = cursor.fetchone()
     try:
         challenge = row['payload']['settings']['challenge_id']
-        lifespan = _integer(observation['start']['block']['config']['challenges'][challenge]['lifespan_period'],
-                            'challenge lifetime', 1)
+        started = _integer(row['preflight']['height'], 'preflight height', 1)
+        lifespan = _lifespan(observation, challenge)
     except (KeyError, TypeError, ValueError):
         return None
+    first, last = started + submissions.UNSENT_PRECOMMIT_MARGIN, started + lifespan // 2
+    if snapshot.height >= last:
+        with database.transaction() as cursor:
+            cursor.execute("SELECT id FROM observed_blocks WHERE height>=%s AND height<%s ORDER BY height DESC LIMIT 1",
+                           (first, last))
+            archived = cursor.fetchone()
+        if not archived:
+            return None
+        try:
+            current = snapshot.height
+            observation, snapshot = BlockStore(database).read(archived['id'])
+            feed = player_feed(observation, player_id)
+            lifespan = _lifespan(observation, challenge)
+        except (ProtocolDataError, KeyError, TypeError, ValueError):
+            return None
+        evidence = {**evidence, 'block_id': snapshot.block_id, 'height': snapshot.height,
+                    'source': 'archived-pool-feed', 'evaluated_at_height': current}
     return submissions.expire_unsent_precommit(database, intent_id, list(feed['precommits'].values()),
                                                height=snapshot.height, lifespan=lifespan, evidence=evidence)
 
@@ -197,7 +224,7 @@ def reconcile_block(database, block_id, player_id, *, artifact_origin=None, subm
         uncertain = cursor.fetchall()
     for intent in uncertain:
         if submissions.recover_precommit(database,intent["id"],list(feed["precommits"].values()),evidence=evidence) is None:
-            _release_unsent_precommit(database,intent["id"],feed,observation,snapshot,evidence)
+            _release_unsent_precommit(database,intent["id"],player_id,feed,observation,snapshot,evidence)
     with database.transaction() as cursor:
         cursor.execute("""SELECT r.id,p.benchmark_id FROM reservations r JOIN precommit_receipts p ON p.reservation_id=r.id
             WHERE r.state='uncertain' ORDER BY r.id""")

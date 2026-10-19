@@ -204,6 +204,33 @@ class SubmissionTests(DatabaseCase):
         outbox=self.row("SELECT state,evidence FROM protocol_outbox WHERE id=%s",(intent["id"],))
         self.assertEqual((outbox["state"],outbox["evidence"]["height"],outbox["evidence"]["preflight_height"]),("rejected",13,8))
 
+    def empty_feed_block(self,height):
+        value=observation(height)
+        for anchor in ("start","end"):
+            value[anchor]["block"]["config"]["challenges"]={"c1":{"lifespan_period":120}}
+        value["pool_player_id"]=self.player
+        value["pool_pending"]={"precommits":[],"benchmarks":[],"proofs":[],"frauds":[]}
+        recorded=BlockStore(self.db).record(value,collector="fixture")
+        self.assertTrue(recorded["complete"],recorded)
+        return value["start"]["block"]["id"]
+
+    def test_reconciliation_past_the_window_reads_an_archived_block_inside_it(self):
+        row,intent=self.queued()
+        submissions.begin(self.db,intent["id"],preflight=self.preflight())
+        # Nothing inside the window was archived yet: a block past it proves nothing.
+        late=self.empty_feed_block(70)
+        reconcile_block(self.db,late,self.player)
+        self.assertEqual(self.row("SELECT state FROM reservations WHERE id=%s",(row["id"],))["state"],"uncertain")
+        # A complete block inside the window that the rule never saw live still settles it.
+        inside=self.empty_feed_block(20)
+        reconcile_block(self.db,late,self.player)
+        saved=self.row("SELECT state,slot_held FROM reservations WHERE id=%s",(row["id"],))
+        self.assertEqual((saved["state"],saved["slot_held"]),("rejected",False))
+        outbox=self.row("SELECT state,evidence FROM protocol_outbox WHERE id=%s",(intent["id"],))
+        self.assertEqual((outbox["state"],outbox["evidence"]["block_id"],outbox["evidence"]["height"],outbox["evidence"]["evaluated_at_height"]),
+                         ("rejected",inside,20,70))
+        self.assertEqual(self.balance()["collateral"],0)
+
     def test_indistinguishable_pending_precommit_blocks_another_member(self):
         first,intent=self.queued()
         submissions.begin(self.db,intent["id"],preflight=self.preflight())
