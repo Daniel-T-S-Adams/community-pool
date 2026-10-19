@@ -531,6 +531,28 @@ class SubmissionTests(DatabaseCase):
         self.assertEqual(self.row("SELECT count(*) AS n FROM reservation_events WHERE reservation_id=%s AND kind='expired'",
                                   (row['id'],))['n'], 1)
 
+    def test_rate_limited_results_end_the_work_when_its_lifetime_elapses(self):
+        refusal = submissions.RATE_LIMIT_BODIES['results']
+        # Inside the lifetime the refused send stays uncertain: the precommit is still live on TIG.
+        row, result, block_id = self.late_result_fixture(height=128, status=503, body=refusal)
+        reconcile_block(self.db, block_id, self.player, submission_origin='https://tig.example')
+        self.assertEqual(self.row('SELECT state FROM reservations WHERE id=%s', (row['id'],))['state'], 'accepted')
+        self.tearDown(); self.setUp()
+        row, result, block_id = self.late_result_fixture(status=503, body=refusal)
+        before = self.balance()
+        reconcile_block(self.db, block_id, self.player, submission_origin='https://tig.example')
+        saved = self.row('SELECT state,slot_held,collateral_outcome FROM reservations WHERE id=%s', (row['id'],))
+        self.assertEqual((saved['state'], saved['slot_held'], saved['collateral_outcome']), ('expired', False, None))
+        self.assertEqual(self.balance()['collateral'], before['collateral'])
+        intent = self.row('SELECT state,evidence FROM protocol_outbox WHERE id=%s', (result['id'],))
+        self.assertEqual((intent['state'], intent['evidence']['source']), ('rejected', 'tig-rate-limited-results-v1'))
+        # Any other 503 wording is still only a generic server failure.
+        self.tearDown(); self.setUp()
+        row, result, block_id = self.late_result_fixture(status=503, body='Service unavailable')
+        reconcile_block(self.db, block_id, self.player, submission_origin='https://tig.example')
+        self.assertEqual(self.row('SELECT state FROM reservations WHERE id=%s', (row['id'],))['state'], 'accepted')
+        self.assertEqual(self.row('SELECT state FROM protocol_outbox WHERE id=%s', (result['id'],))['state'], 'uncertain')
+
     def test_result_rejection_needs_lifetime_correct_identity_origin_and_digest(self):
         cases = ({'height': 128}, {'status': 500}, {'body': 'Precommit does not exist: ' + 'c'*32},
                  {'origin': 'https://different.example'}, {'raw_hash': '0'*64}, {'still_present': True})

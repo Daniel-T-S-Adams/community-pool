@@ -217,6 +217,24 @@ def record_response(database, identity, response):
         return success
 
 
+# TIG's rate limiter answers a second write inside five seconds with exactly these
+# bodies, before anything is recorded. They are pinned so that only this reply,
+# from the configured origin and endpoint, counts as a refused send.
+RATE_LIMIT_BODIES = {"precommit": "You can only submit a precommit once per 5 seconds",
+                     "results": "You can only submit a benchmark once per 5 seconds",
+                     "proofs": "You can only submit a proof once per 5 seconds"}
+
+
+def rate_limited(response, kind, origin):
+    """Whether a stored TIG response is exactly the rate-limit refusal for this kind of write."""
+    from .tig_transport import PATHS
+    body = RATE_LIMIT_BODIES.get(kind)
+    return (isinstance(response, dict) and body is not None and origin is not None
+            and response.get("status") == 503 and response.get("path") == PATHS[kind]
+            and response.get("origin") == origin and response.get("body") == body
+            and response.get("raw_sha256") == hashlib.sha256(body.encode()).hexdigest())
+
+
 def definitive_rejection(database, identity, *, evidence, actual_fee=0):
     """Trusted adapter only: HTTP timeout, absence or generic 4xx is insufficient."""
     if not evidence or evidence.get("definitive_no_precommit") is not True:

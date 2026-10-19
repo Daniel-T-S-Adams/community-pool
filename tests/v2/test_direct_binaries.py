@@ -225,15 +225,40 @@ class DirectBinaryTests(DatabaseCase):
         self.assertIsNone(coordinator.dispatch_one())
         intent = self.row("SELECT state,sent_at FROM protocol_outbox WHERE reservation_id=%s AND kind='precommit'", (second['id'],))
         self.assertEqual((intent['state'], intent['sent_at']), ('ready', None))
-        self.assertTrue(coordinator.precommit_sent_recently())
+        self.assertTrue(coordinator.sent_recently('precommit'))
+        # TIG limits each write endpoint on its own: a fresh precommit does not delay results or proofs.
+        self.assertFalse(coordinator.sent_recently('results'))
+        self.assertFalse(coordinator.sent_recently('proofs'))
         coordinator.precommit_interval = 0
-        self.assertFalse(coordinator.precommit_sent_recently())
+        self.assertFalse(coordinator.sent_recently('precommit'))
         self.assertIsNotNone(coordinator.dispatch_one())
         self.assertEqual(self.row("SELECT state FROM protocol_outbox WHERE reservation_id=%s AND kind='precommit'",
                                   (second['id'],))['state'], 'accepted')
         for bad in (61, -1, 2.5):
             with self.assertRaises(ValueError):
                 self.coordinator(lambda url: payload, precommit_interval=bad)
+
+    def test_rate_limited_precommit_is_released_at_once(self):
+        row = self.reserve_offer('limited')
+        payload = self.archive(row['selection']['algorithm_name'])
+        coordinator = self.coordinator(lambda url: payload)
+        coordinator.writer.origin = 'https://tig.example'
+        body = submissions.RATE_LIMIT_BODIES['precommit']
+        refusal = {'status': 503, 'body': body, 'path': '/submit-precommit', 'origin': 'https://tig.example',
+                   'raw_sha256': hashlib.sha256(body.encode()).hexdigest(), 'received_at': '2026-10-19T16:49:02+00:00'}
+        coordinator.writer.post.side_effect = lambda begun: refusal
+        self.assertIsNotNone(coordinator.dispatch_one())
+        saved = self.row('SELECT state,slot_held,fee_actual,collateral_outcome FROM reservations WHERE id=%s', (row['id'],))
+        self.assertEqual((saved['state'], saved['slot_held'], int(saved['fee_actual']), saved['collateral_outcome']),
+                         ('rejected', False, 0, 'returned'))
+        intent = self.row("SELECT state,evidence FROM protocol_outbox WHERE reservation_id=%s AND kind='precommit'", (row['id'],))
+        self.assertEqual((intent['state'], intent['evidence']['source']), ('rejected', 'tig-rate-limited-precommit-v1'))
+        self.assertEqual(self.balance()['collateral'], 0)
+        self.assertEqual(self.balance()['slots'], 0)
+        # A different origin, status or wording is not that refusal and keeps the send uncertain.
+        for change in ({'origin': 'https://other.example'}, {'status': 429}, {'body': body + '.'}, {'path': '/submit-benchmark'}):
+            self.assertFalse(submissions.rate_limited({**refusal, **change}, 'precommit', 'https://tig.example'))
+        self.assertTrue(submissions.rate_limited(refusal, 'precommit', 'https://tig.example'))
 
     def test_verified_archive_reuse_is_scoped_bounded_and_immutable(self):
         older, digest = 'a' * 64, 'b' * 64

@@ -133,10 +133,15 @@ def _expire_rejected_results(database, row, observation, snapshot, submission_or
         return False
     response = receipt['response']
     body = 'Precommit does not exist: ' + row['benchmark_id']
-    if (response.get('status'), response.get('path'), response.get('origin'), response.get('body')) != (
-            400, '/submit-benchmark', submission_origin, body):
-        return False
-    if response.get('raw_sha256') != hashlib.sha256(body.encode()).hexdigest():
+    if (response.get('status'), response.get('path'), response.get('origin'), response.get('body')) == (
+            400, '/submit-benchmark', submission_origin, body) and \
+            response.get('raw_sha256') == hashlib.sha256(body.encode()).hexdigest():
+        source = 'tig-late-results-rejection-v1'
+    elif submissions.rate_limited(response, 'results', submission_origin):
+        # TIG's rate limiter refused the results before recording them; the pool never
+        # resends a potentially sent payload, so the work ends when its lifetime does.
+        source = 'tig-rate-limited-results-v1'
+    else:
         return False
     try:
         received = datetime.fromisoformat(response['received_at'])
@@ -147,7 +152,7 @@ def _expire_rejected_results(database, row, observation, snapshot, submission_or
     lifetime = _expired_lifetime(database, row, observation, snapshot)
     if lifetime is None:
         return False
-    evidence = {**lifetime, 'source': 'tig-late-results-rejection-v1', 'response_id': str(receipt['id']),
+    evidence = {**lifetime, 'source': source, 'response_id': str(receipt['id']),
                 'response_sha256': response['raw_sha256'], 'origin': submission_origin}
     with database.transaction() as cursor:
         locked = benchmarks._locked(cursor, row['id'], budget=True)
