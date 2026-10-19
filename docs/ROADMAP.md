@@ -23,7 +23,7 @@ validation records or "remaining work" notes.
 | Check | State |
 |---|---|
 | CPU benchmarks on mainnet | Completed end to end with the official pinned runtimes, on a single machine and on a master with one SSH helper, including TIG activation and credit recording. Rewards for those benchmarks were zero, so only the zero-earnings settlement path has been exercised in production. |
-| GPU benchmarks | Vector search and the neural-net optimiser were timed on real GPU hardware with the official pinned runtimes and passed the local verifier; hypergraph was too slow for TIG's benchmark lifetime. No GPU benchmark has been submitted through the pool yet, so GPU stays unoffered until one is. |
+| GPU benchmarks | Completed end to end for vector search on 19 October 2026: benchmark 9e884acbc2d3160fb6b69874c667d256 (68 nonces, track n_queries=9000) ran on a member's RTX 3070 through the pool, was accepted by TIG with four active bundles and no fraud, and became active at block 1391173. The neural-net optimiser was timed on the same hardware and passed the local verifier but has not yet been submitted through the pool; hypergraph is too slow for TIG's benchmark lifetime and stays unoffered. |
 | Challenge timing | Implemented: the operator ticks the challenges timed on members' hardware in the Offered challenges card, and selection skips every other challenge. Without a saved list the pool still offers every active challenge of a resource family. |
 | Settlement with real rewards | Mapping an actual token receipt to a reward round, and the full reward cycle through the TokenLocker's pending period, have not been exercised with a qualifying benchmark. |
 | Verified-binary reuse | The coordinator records checked archives for reuse; the reuse path has not yet served a production assignment. |
@@ -41,7 +41,7 @@ validation records or "remaining work" notes.
 |---|---|
 | Spending cap | Required before any fee or gas is committed. Choose the rolling window, the per-window ceilings for TIG submission fees and native gas, and the per-attempt ceilings. |
 | Operator payouts | Optional. Configure an income wallet and a retained operating reserve to withdraw operator earnings. |
-| Offered resources | CPU and/or GPU, after validating execution on the hardware members will use. |
+| Offered resources | CPU and/or GPU, after validating execution on the hardware members will use. GPU on AMD64 with an NVIDIA runtime has been validated for vector search. |
 | Offered challenges | Which challenges of those resources members receive; only ones timed against TIG's benchmark lifetime on the members' hardware, set from the operator page. |
 | External alerts | The health check writes a status file; forwarding it to email, chat or a pager is the operator's choice. |
 | Evidence copies | Whether the recovery host also keeps a raw copy of the primary's block and report spools, in addition to the database backups and pending-file snapshots. |
