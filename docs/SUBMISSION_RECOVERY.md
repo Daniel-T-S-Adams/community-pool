@@ -20,6 +20,10 @@ process can begin that intent. Pending precommits with the same settings and
 compute type are serialized even if their unselected track parameters differ:
 TIG's random track choice can otherwise make their eventual records
 indistinguishable. A timeout does not clear this fence or permit a resend.
+TIG accepts one precommit per player every five seconds and refuses a second
+send inside that window, so the coordinator leaves a precommit intent queued
+while the newest precommit send is younger than `precommit_interval_seconds`
+(default 6); results and proofs are not spaced.
 
 A successful precommit response stores the returned benchmark ID immediately
 with its immutable reservation owner. Metadata fetches happen afterwards. If
@@ -126,6 +130,7 @@ python3 tools/run_tig_v2.py --config /absolute/path/coordinator.json
 
 `submission_timeout_seconds` (default 20) bounds each TIG write; a longer value
 only reduces lost responses, because the send fence does not depend on it.
+`precommit_interval_seconds` (default 6, 0 disables) spaces precommit sends.
 The JSON file includes `tig_api_url`, `pool_player_id`, `public_origin` (the
 member API's HTTPS origin), `submissions_enabled` and `new_work_enabled`.
 Both boolean flags default to false. Enabling new work requires enabled
