@@ -17,6 +17,7 @@ validation records or "remaining work" notes.
 | Worker deadlines | The worker's per-nonce timeout is not a whole-benchmark deadline. Operators must measure each challenge and hardware combination against TIG's benchmark lifetime before offering it to members. |
 | Helper provisioning | The member master mode uses helper machines the member has already provisioned with SSH access, Docker and the pinned worker; the installer does not set helpers up. |
 | Database space | Compaction frees rows, not disk; reclaiming space after large deletions needs a `VACUUM FULL` or `pg_repack` maintenance window. |
+| Resend after a refused send | A results or proofs submission that TIG refuses (its per-player rate limit answers HTTP 503) is not resent: the schema keeps one intent per reservation and kind and never returns a potentially sent intent to ready. The coordinator spaces sends to avoid the refusal; a refused results send ends the work through the late-results rule at the end of the challenge lifetime, with the member's collateral following the expired-work policy. Allowing a retry intent after a pinned refusal is a schema change for a later release. |
 
 ## Validated so far, and not yet
 

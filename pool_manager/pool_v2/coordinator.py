@@ -76,13 +76,17 @@ class Coordinator:
         payload,metadata=references.capture(self.public,self.player_id)
         return references.record(self.database,payload,metadata)
 
-    def precommit_sent_recently(self):
-        """True while the newest precommit send is younger than the configured interval."""
+    def sent_recently(self,kind):
+        """True while the newest send of this kind is younger than the configured interval.
+
+        TIG rate-limits each write endpoint separately (one precommit, one
+        benchmark and one proof per player every five seconds).
+        """
         if not self.precommit_interval:
             return False
         with self.database.transaction() as cursor:
             cursor.execute("""SELECT extract(epoch FROM clock_timestamp()-max(sent_at)) AS age
-                FROM protocol_outbox WHERE kind='precommit' AND sent_at IS NOT NULL""")
+                FROM protocol_outbox WHERE kind=%s AND sent_at IS NOT NULL""",(kind,))
             row=cursor.fetchone()
         age=row["age"] if row else None
         return age is not None and float(age)<self.precommit_interval
@@ -125,7 +129,7 @@ class Coordinator:
                     reason="new-work-paused" if not work_allowed else "offer-expired-before-send"
                     submissions.cancel_unsent(self.database,intent["id"],evidence={"reason":reason})
                     continue
-                if not self.writer.enabled or self.precommit_sent_recently():continue
+                if not self.writer.enabled or self.sent_recently("precommit"):continue
                 with self.database.transaction() as cursor:
                     cursor.execute("SELECT 1 FROM reservation_binaries WHERE reservation_id=%s UNION ALL SELECT 1 FROM reservation_archives WHERE reservation_id=%s",(intent["reservation_id"],intent["reservation_id"]))
                     archived=cursor.fetchone()
@@ -147,7 +151,7 @@ class Coordinator:
                 if cancellation:
                     submissions.cancel_unsent(self.database,intent["id"],evidence=cancellation)
                     continue
-            elif submissions.retire_unsent_payload(self.database,intent["id"]):
+            elif submissions.retire_unsent_payload(self.database,intent["id"]) or self.sent_recently(intent["kind"]):
                 continue
             if not self.writer.enabled:continue
             try:
@@ -161,7 +165,14 @@ class Coordinator:
                 # exception text that a transport might fill with headers.
                 submissions.record_response(self.database,intent["id"],{"status":None,"error_type":type(error).__name__})
                 raise
-            submissions.record_response(self.database,intent["id"],response)
+            accepted=submissions.record_response(self.database,intent["id"],response)
+            if not accepted and intent["kind"]=="precommit" and submissions.rate_limited(response,"precommit",getattr(self.writer,"origin",None)):
+                # TIG's rate limiter refused the send before recording anything: release now
+                # instead of waiting for the never-received rule.
+                submissions.definitive_rejection(self.database,intent["id"],evidence={
+                    "definitive_no_precommit":True,"source":"tig-rate-limited-precommit-v1",
+                    "status":response["status"],"path":response["path"],"origin":response["origin"],
+                    "raw_sha256":response["raw_sha256"],"received_at":response.get("received_at")})
             return intent["id"]
         return None
 

@@ -20,10 +20,17 @@ process can begin that intent. Pending precommits with the same settings and
 compute type are serialized even if their unselected track parameters differ:
 TIG's random track choice can otherwise make their eventual records
 indistinguishable. A timeout does not clear this fence or permit a resend.
-TIG accepts one precommit per player every five seconds and refuses a second
-send inside that window, so the coordinator leaves a precommit intent queued
-while the newest precommit send is younger than `precommit_interval_seconds`
-(default 6); results and proofs are not spaced.
+TIG accepts one precommit, one benchmark and one proof per player every five
+seconds, each endpoint counted separately, and refuses a second send inside
+that window with HTTP 503. The coordinator therefore leaves an intent queued
+while the newest send of the same kind is younger than
+`precommit_interval_seconds` (default 6). If TIG still answers a precommit
+with exactly that rate-limit reply from the configured origin, the pool treats
+it as a refused, unrecorded send and releases the reservation at once
+(`tig-rate-limited-precommit-v1`); a results or proofs intent refused that way
+is never resent (one intent per reservation and kind, and a potentially sent
+intent never returns to ready), so the work ends through the late-results rule
+below when its lifetime elapses.
 
 A successful precommit response stores the returned benchmark ID immediately
 with its immutable reservation owner. Metadata fetches happen afterwards. If
@@ -59,11 +66,13 @@ ambiguous HTTP failures and missing reports do not release funds. Explicit
 definitive-rejection handling exists for a trusted protocol adapter; generic
 HTTP 4xx responses are deliberately insufficient evidence. One narrow
 late-results rule applies: the exact archived HTTP-400 missing-
-precommit response must match the configured TIG origin, benchmark ID and raw
-hash; a complete later pool feed must contain no record for it; the original
-challenge lifetime must have elapsed. Any successful prior result response or
-proof intent prevents this rule. It atomically marks the reservation expired
-and result intent rejected, freeing the slot while preserving collateral.
+precommit response, or the exact HTTP-503 rate-limit refusal, must match the
+configured TIG origin, endpoint and raw hash (and, for the former, the
+benchmark ID); a complete later pool feed must contain no record for it; the
+original challenge lifetime must have elapsed. Any successful prior result
+response or proof intent prevents this rule. It atomically marks the
+reservation expired and result intent rejected (`tig-late-results-rejection-v1`
+or `tig-rate-limited-results-v1`), freeing the slot while preserving collateral.
 Other rejection/expiry paths still require their own definitive evidence.
 
 ### A member never returns results
