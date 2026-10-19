@@ -45,10 +45,12 @@ def main(argv=None):
     if type(reference_age) is not int or reference_age<=0:parser.error('reference_max_age_seconds must be a positive integer')
     timeout=config.get('submission_timeout_seconds',20)
     if type(timeout) is not int or not 1<=timeout<=300:parser.error('submission_timeout_seconds must be an integer between 1 and 300')
+    interval=config.get('precommit_interval_seconds',6)
+    if type(interval) is not int or not 0<=interval<=60:parser.error('precommit_interval_seconds must be an integer between 0 and 60')
     coordinator=Coordinator(database,address(config['pool_player_id']),PublicTigClient(origin),
         TigSubmissionClient(origin,key,enabled=enabled,timeout=timeout),new_work=new_work,
         binary_hosts=config.get('binary_hosts'),max_age=config.get('max_block_age',120),artifact_origin=config.get('public_origin'),
-        binary_reuse_seconds=reuse,reference_max_age=reference_age)
+        binary_reuse_seconds=reuse,reference_max_age=reference_age,precommit_interval=interval)
     logging.basicConfig(level=logging.INFO,format='%(asctime)s %(levelname)s %(message)s')
     log=logging.getLogger('innopool-v2-coordinator')
     stop=threading.Event()

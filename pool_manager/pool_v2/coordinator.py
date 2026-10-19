@@ -47,8 +47,14 @@ def verify_archive(archive, algorithm_name, compute_type):
 
 
 class Coordinator:
-    def __init__(self,database,player_id,public_client,submission_client,*,new_work=False,binary_hosts=None,download=None,max_age=120,artifact_origin=None,binary_reuse_seconds=24*3600,reference_max_age=1800):
+    def __init__(self,database,player_id,public_client,submission_client,*,new_work=False,binary_hosts=None,download=None,max_age=120,artifact_origin=None,binary_reuse_seconds=24*3600,reference_max_age=1800,precommit_interval=6):
         self.database,self.player_id=database,player_id
+        if type(precommit_interval) is not int or not 0<=precommit_interval<=60:
+            raise ValueError("precommit interval must be an integer of seconds between 0 and 60")
+        # TIG accepts one precommit per player every five seconds and refuses a
+        # second send inside that window, which would otherwise sit uncertain
+        # until the never-received rule releases it. Zero disables the spacing.
+        self.precommit_interval=precommit_interval
         self.public,self.writer=public_client,submission_client
         self.new_work,self.max_age=new_work,max_age
         self.binary_hosts=binary_hosts or DEFAULT_HOSTS
@@ -69,6 +75,17 @@ class Coordinator:
         """One whole-network read, kept as the best bundle per algorithm and track."""
         payload,metadata=references.capture(self.public,self.player_id)
         return references.record(self.database,payload,metadata)
+
+    def precommit_sent_recently(self):
+        """True while the newest precommit send is younger than the configured interval."""
+        if not self.precommit_interval:
+            return False
+        with self.database.transaction() as cursor:
+            cursor.execute("""SELECT extract(epoch FROM clock_timestamp()-max(sent_at)) AS age
+                FROM protocol_outbox WHERE kind='precommit' AND sent_at IS NOT NULL""")
+            row=cursor.fetchone()
+        age=row["age"] if row else None
+        return age is not None and float(age)<self.precommit_interval
 
     def preflight(self,row):
         start=self.public.get("/get-block")
@@ -108,7 +125,7 @@ class Coordinator:
                     reason="new-work-paused" if not work_allowed else "offer-expired-before-send"
                     submissions.cancel_unsent(self.database,intent["id"],evidence={"reason":reason})
                     continue
-                if not self.writer.enabled:continue
+                if not self.writer.enabled or self.precommit_sent_recently():continue
                 with self.database.transaction() as cursor:
                     cursor.execute("SELECT 1 FROM reservation_binaries WHERE reservation_id=%s UNION ALL SELECT 1 FROM reservation_archives WHERE reservation_id=%s",(intent["reservation_id"],intent["reservation_id"]))
                     archived=cursor.fetchone()

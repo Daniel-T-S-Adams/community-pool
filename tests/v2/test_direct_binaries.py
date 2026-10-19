@@ -100,6 +100,8 @@ class DirectBinaryTests(DatabaseCase):
         writer = Mock()
         writer.enabled = True
         writer.post.side_effect = lambda begun: {'status': 200, 'body': {'benchmark_id': uuid_hex()}}
+        # These tests send precommits back to back; TIG's per-player spacing is covered by its own test.
+        options.setdefault('precommit_interval', 0)
         return Coordinator(self.db, self.player, public, writer, new_work=True, download=download, **options)
 
     def precommit(self, row):
@@ -212,6 +214,26 @@ class DirectBinaryTests(DatabaseCase):
         self.assertEqual(self.row('SELECT count(*) AS n FROM verified_binaries')['n'], 2)
         with self.assertRaises(ValueError):
             self.coordinator(download, binary_reuse_seconds=-1)
+
+    def test_precommit_sends_are_spaced_for_the_tig_rate_limit(self):
+        first = self.reserve_offer('first')
+        payload = self.archive(first['selection']['algorithm_name'])
+        coordinator = self.coordinator(lambda url: payload, precommit_interval=60)
+        self.assertIsNotNone(coordinator.dispatch_one())
+        second = self.reserve_offer('second')
+        # The newest precommit went out moments ago: the next one waits for TIG's window.
+        self.assertIsNone(coordinator.dispatch_one())
+        intent = self.row("SELECT state,sent_at FROM protocol_outbox WHERE reservation_id=%s AND kind='precommit'", (second['id'],))
+        self.assertEqual((intent['state'], intent['sent_at']), ('ready', None))
+        self.assertTrue(coordinator.precommit_sent_recently())
+        coordinator.precommit_interval = 0
+        self.assertFalse(coordinator.precommit_sent_recently())
+        self.assertIsNotNone(coordinator.dispatch_one())
+        self.assertEqual(self.row("SELECT state FROM protocol_outbox WHERE reservation_id=%s AND kind='precommit'",
+                                  (second['id'],))['state'], 'accepted')
+        for bad in (61, -1, 2.5):
+            with self.assertRaises(ValueError):
+                self.coordinator(lambda url: payload, precommit_interval=bad)
 
     def test_verified_archive_reuse_is_scoped_bounded_and_immutable(self):
         older, digest = 'a' * 64, 'b' * 64
