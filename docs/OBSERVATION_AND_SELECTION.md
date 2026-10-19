@@ -128,7 +128,8 @@ of such a bundle produces JSON `null`, so TIG uses the algorithm's defaults.
 With pool-scoped captures that bundle comes from a separate whole-network
 reference, read by the coordinator only while a member is waiting for work
 and the newest stored reference is older than `reference_max_age_seconds`
-(default 1800). The reservation records the reference capture's identity,
+(default 1800). A read that a new block interrupts is repeated, up to three
+times. The reservation records the reference capture's identity,
 block and digest beside the credited block. A reference from after the
 current block, or older than the configured age, is refused.
 

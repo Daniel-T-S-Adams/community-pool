@@ -13,6 +13,11 @@ from typing import Any
 
 
 class ProtocolDataError(ValueError):
+    pass
+
+
+class BlockChangedDuringCapture(ProtocolDataError):
+    """A new TIG block arrived between the two block reads that bracket a capture; the read can be repeated."""
     """An observation cannot support a complete, consistent calculation."""
 
 
@@ -148,7 +153,7 @@ def _validate_snapshot(observation, scope=None):
     details = _object(start["details"], "block.details")
     block_id = _text(start["id"], "block.id")
     if end["id"] != block_id or end["details"] != details or end["config"] != start["config"]:
-        raise ProtocolDataError("block changed while collecting the observation")
+        raise BlockChangedDuringCapture("block changed while collecting the observation")
     height = _integer(details["height"], "block.height")
     round_number = _integer(details["round"], "block.round", 1)
     timestamp = _integer(details["timestamp"], "block.timestamp")
